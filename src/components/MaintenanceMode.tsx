@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import logo from "@/assets/fukitos-logo.png";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MAINTENANCE_CONFIG } from "@/config/maintenance";
@@ -39,13 +39,6 @@ export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModePro
         transition={{ duration: 0.6 }}
         className="w-full max-w-md flex flex-col items-center text-center"
       >
-        <motion.img
-          src={logo}
-          alt="Logo FUKITOS"
-          className="w-32 h-auto mb-6"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        />
 
         <motion.div
           initial={{ scale: 0.9 }}
