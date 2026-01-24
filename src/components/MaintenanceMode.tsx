@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MAINTENANCE_CONFIG } from "@/config/maintenance";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 
 interface MaintenanceModeProps {
   onUnlock: () => void;
@@ -11,6 +12,7 @@ interface MaintenanceModeProps {
 }
 
 export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModeProps) => {
+  useAntiInspect();
   const [password, setPassword] = useState("");
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [error, setError] = useState("");
