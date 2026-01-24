@@ -116,10 +116,10 @@ const Index = () => {
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <h1 className="text-5xl font-semibold text-gradient">Maçãnito</h1>
+          <h1 className="text-5xl font-semibold text-gradient">FUKITOS</h1>
           <motion.img
             src={logo}
-            alt="Logo Maçãnito"
+            alt="Logo FUKITOS"
             className="w-12 h-12 -rotate-[15deg] ml-2"
             animate={{ rotate: [-15, -10, -15] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
