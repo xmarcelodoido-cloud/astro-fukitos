@@ -77,6 +77,8 @@ export function LoginForm({ onSearchTasks, isLoading }: LoginFormProps) {
       </div>
 
       <div className="flex flex-col gap-4 mt-2">
+        <VerifyButton onVerified={() => setIsVerified(true)} isVerified={isVerified} />
+
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Button
             onClick={() => handleSearch('pending')}
@@ -86,8 +88,6 @@ export function LoginForm({ onSearchTasks, isLoading }: LoginFormProps) {
             Atividades Pendentes
           </Button>
         </motion.div>
-
-        <VerifyButton onVerified={() => setIsVerified(true)} isVerified={isVerified} />
 
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Button
