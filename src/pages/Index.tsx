@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/fukitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
@@ -111,18 +111,17 @@ const Index = () => {
         className="w-full max-w-sm flex flex-col items-center"
       >
         <motion.div
-          className="flex items-center gap-1 mb-2"
+          className="flex flex-col items-center mb-4"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <h1 className="text-5xl font-semibold text-gradient">FUKITOS</h1>
           <motion.img
             src={logo}
             alt="Logo FUKITOS"
-            className="w-12 h-12 -rotate-[15deg] ml-2"
-            animate={{ rotate: [-15, -10, -15] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-48 h-auto mb-2"
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           />
         </motion.div>
 
