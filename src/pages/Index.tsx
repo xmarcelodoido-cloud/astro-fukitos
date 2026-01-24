@@ -111,17 +111,18 @@ const Index = () => {
         className="w-full max-w-sm flex flex-col items-center"
       >
         <motion.div
-          className="flex flex-col items-center mb-4"
+          className="flex items-center gap-3 mb-2"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          <h1 className="text-5xl font-semibold text-gradient">FUKITOS</h1>
           <motion.img
             src={logo}
             alt="Logo FUKITOS"
-            className="w-48 h-auto mb-2"
-            animate={{ scale: [1, 1.02, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="w-14 h-auto"
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           />
         </motion.div>
 
