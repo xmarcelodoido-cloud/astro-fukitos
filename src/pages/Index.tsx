@@ -135,7 +135,7 @@ const Index = () => {
         <div className="mt-6 flex flex-col items-center text-center">
           <span className="text-foreground text-sm mb-2">Entre no nosso servidor do Discord</span>
           <motion.a
-            href="https://discord.gg/yXYKSZAK9Z"
+            href="https://discord.gg/yNYSzNTz"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}
