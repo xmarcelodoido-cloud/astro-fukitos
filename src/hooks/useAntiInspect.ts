@@ -47,23 +47,11 @@ export const useAntiInspect = () => {
       }
     };
 
-    // Detectar DevTools aberto (não é 100% confiável)
+    // Detectar DevTools aberto (desabilitado - causava falsos positivos em iframes)
+    // A detecção baseada em outerWidth/innerWidth não é confiável
     const detectDevTools = () => {
-      const threshold = 160;
-      const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-      const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-      
-      if (widthThreshold || heightThreshold) {
-        // DevTools provavelmente está aberto
-        document.body.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; padding: 20px;">
-            <div>
-              <h1 style="font-size: 2rem; margin-bottom: 1rem;">🚫 Acesso Negado</h1>
-              <p>Ferramentas de desenvolvedor detectadas. Feche-as e recarregue a página.</p>
-            </div>
-          </div>
-        `;
-      }
+      // Desabilitado para evitar falsos positivos
+      return;
     };
 
     // Bloquear seleção de texto
