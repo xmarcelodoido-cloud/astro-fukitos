@@ -7,6 +7,7 @@ import { DonationModal } from "@/components/DonationModal";
 import { NotificationContainer, NotificationData } from "@/components/Notification";
 import { login, fetchUserTasks, processTasks, Task } from "@/lib/api";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+import { MAINTENANCE_CONFIG } from "@/config/maintenance";
 
 const Index = () => {
   useAntiInspect();
@@ -14,6 +15,11 @@ const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+
+  const handleLogoutAdmin = () => {
+    localStorage.removeItem("fukitos_admin_unlocked");
+    window.location.reload();
+  };
 
   const addNotification = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -150,6 +156,16 @@ const Index = () => {
             <span>DISCORD BETA</span>
           </motion.a>
         </div>
+
+        {/* Botão de sair do admin - só aparece durante manutenção */}
+        {MAINTENANCE_CONFIG.MAINTENANCE_MODE && (
+          <button
+            onClick={handleLogoutAdmin}
+            className="mt-4 text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
+          >
+            Sair do modo admin
+          </button>
+        )}
       </motion.div>
     </div>
   );
