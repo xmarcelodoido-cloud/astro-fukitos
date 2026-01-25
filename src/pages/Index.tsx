@@ -6,8 +6,10 @@ import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
 import { NotificationContainer, NotificationData } from "@/components/Notification";
 import { login, fetchUserTasks, processTasks, Task } from "@/lib/api";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 
 const Index = () => {
+  useAntiInspect();
   const [isLoading, setIsLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
