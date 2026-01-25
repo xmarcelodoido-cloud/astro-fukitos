@@ -48,7 +48,7 @@ export function DonationModal() {
             </p>
 
             <motion.a
-              href="https://pixgg.com/marcos10pc"
+              href="https://pixgg.com/zenin"
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.02 }}
