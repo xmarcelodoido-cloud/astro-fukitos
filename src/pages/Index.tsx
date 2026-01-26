@@ -256,15 +256,15 @@ const Index = () => {
           </motion.a>
         </div>
 
-        {/* Admin button */}
+        {/* Admin button - fixed bottom right */}
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/admin-login")}
-          className="mt-6 flex items-center gap-2 px-4 py-2 bg-secondary/30 hover:bg-secondary/50 rounded-lg text-sm text-muted-foreground transition-colors"
+          className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-secondary/50 hover:bg-secondary/70 rounded-lg text-sm text-muted-foreground transition-colors shadow-lg backdrop-blur-sm z-50"
         >
           <Shield className="w-4 h-4" />
-          Painel Admin
+          Admin
         </motion.button>
 
         {/* Botão de sair do admin - só aparece durante manutenção */}
