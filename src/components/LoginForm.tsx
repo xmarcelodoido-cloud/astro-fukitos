@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,14 +11,23 @@ interface LoginFormProps {
   onVerify: (ra: string, password: string) => Promise<string | null>;
   isLoading: boolean;
   userName: string | null;
+  initialRa?: string;
 }
 
-export function LoginForm({ onSearchTasks, onVerify, isLoading, userName }: LoginFormProps) {
-  const [ra, setRa] = useState("");
+export function LoginForm({ onSearchTasks, onVerify, isLoading, userName, initialRa }: LoginFormProps) {
+  const [ra, setRa] = useState(initialRa || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    if (initialRa && initialRa !== ra) {
+      setRa(initialRa);
+      setPassword("");
+      setIsVerified(false);
+    }
+  }, [initialRa]);
 
   const handleVerify = async () => {
     if (!ra.trim() || !password.trim()) return;
