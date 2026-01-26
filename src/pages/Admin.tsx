@@ -297,8 +297,15 @@ export default function Admin() {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+    try {
+      await signOut();
+      // Limpar qualquer estado de admin do localStorage
+      localStorage.removeItem("fukitos_admin_unlocked");
+      navigate("/admin-login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      navigate("/admin-login");
+    }
   };
 
   const filteredLogs = logs.filter(
