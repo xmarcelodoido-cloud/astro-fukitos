@@ -261,7 +261,7 @@ const Index = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/admin-login")}
-          className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-secondary/10 hover:bg-secondary/30 rounded-lg text-sm text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors z-50"
+          className="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-secondary/5 hover:bg-secondary/20 rounded-lg text-sm text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors z-50"
         >
           <Shield className="w-4 h-4" />
           Admin
