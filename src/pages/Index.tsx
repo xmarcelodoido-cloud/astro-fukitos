@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import logo from "@/assets/fukitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
@@ -82,6 +82,13 @@ const Index = () => {
 
   const handleSelectAccount = (ra: string) => {
     setCurrentRa(ra);
+  };
+
+  const handleLogout = () => {
+    setUserName(null);
+    setAuthToken(null);
+    setCurrentRa("");
+    addNotification("VOCÊ SAIU DA CONTA", "info");
   };
 
   const handleSearchTasks = async (filter: 'pending' | 'expired', _ra: string, _password: string) => {
@@ -230,6 +237,20 @@ const Index = () => {
         </p>
 
         <SavedAccounts onSelectAccount={handleSelectAccount} currentRa={currentRa} />
+
+        {userName && (
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleLogout}
+            className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-lg text-destructive text-sm font-medium transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair da conta ({userName})
+          </motion.button>
+        )}
 
         <LoginForm 
           onSearchTasks={handleSearchTasks} 
