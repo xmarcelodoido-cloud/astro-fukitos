@@ -1,22 +1,34 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Shield } from "lucide-react";
 import logo from "@/assets/fukitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
 import { NotificationContainer, NotificationData } from "@/components/Notification";
+import { BannedScreen } from "@/components/BannedScreen";
+import { SavedAccounts, saveAccount } from "@/components/SavedAccounts";
 import { login, fetchUserTasks, processTasks, Task } from "@/lib/api";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+import { useBanCheck } from "@/hooks/useBanCheck";
+import { logger } from "@/lib/logger";
 import { MAINTENANCE_CONFIG } from "@/config/maintenance";
 
 const Index = () => {
-  useAntiInspect();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [userName, setUserName] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentRa, setCurrentRa] = useState<string>("");
+  
+  const { banInfo, checkBan, clearBanInfo } = useBanCheck();
+  
+  // Pass user info to anti-inspect hook for logging
+  useAntiInspect({ ra: currentRa, studentName: userName || undefined });
 
   const handleLogoutAdmin = () => {
     localStorage.removeItem("fukitos_admin_unlocked");
@@ -34,10 +46,25 @@ const Index = () => {
 
   const handleVerify = async (ra: string, password: string): Promise<string | null> => {
     try {
+      // Check if RA is banned
+      const banStatus = await checkBan(ra);
+      if (banStatus.isBanned) {
+        return null;
+      }
+
       addNotification("VERIFICANDO CREDENCIAIS...", "info");
       const loginData = await login(ra, password);
+      
       setUserName(loginData.nick);
       setAuthToken(loginData.auth_token);
+      setCurrentRa(ra);
+      
+      // Log the login
+      await logger.logLogin(ra, loginData.nick);
+      
+      // Save account for easy access
+      saveAccount(ra, loginData.nick);
+      
       addNotification(`BEM-VINDO, ${loginData.nick.toUpperCase()}!`, "success");
       return loginData.nick;
     } catch (error) {
@@ -45,6 +72,10 @@ const Index = () => {
       addNotification("RA OU SENHA INVÁLIDOS", "error");
       return null;
     }
+  };
+
+  const handleSelectAccount = (ra: string) => {
+    setCurrentRa(ra);
   };
 
   const handleSearchTasks = async (filter: 'pending' | 'expired', _ra: string, _password: string) => {
@@ -78,6 +109,7 @@ const Index = () => {
     } catch (error) {
       console.error(error);
       addNotification("ERRO AO BUSCAR ATIVIDADES", "error");
+      await logger.logError(currentRa, userName || undefined, "Erro ao buscar atividades");
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +130,17 @@ const Index = () => {
       isDraft,
       minTime,
       maxTime,
-      (message, type) => addNotification(message, type)
+      async (message, type) => {
+        addNotification(message, type);
+        
+        // Log task results
+        const taskTitle = message.includes("'") ? message.split("'")[1] : "";
+        if (type === "success" && currentRa && userName) {
+          await logger.logTaskCompleted(currentRa, userName, "", taskTitle);
+        } else if (type === "error" && currentRa && userName) {
+          await logger.logTaskFailed(currentRa, userName, "", taskTitle, message);
+        }
+      }
     );
 
     if (result.success > 0) {
@@ -109,6 +151,20 @@ const Index = () => {
       addNotification(`${result.error} ATIVIDADES FALHARAM`, "error");
     }
   };
+
+  // Show banned screen if user is banned
+  if (banInfo?.isBanned) {
+    return (
+      <BannedScreen
+        reason={banInfo.reason || "Violação das regras de uso"}
+        bannedAt={banInfo.bannedAt}
+        onBack={() => {
+          clearBanInfo();
+          setCurrentRa("");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -147,11 +203,14 @@ const Index = () => {
           Sala do futuro-CMSP WEB/Tarefas Sp.
         </p>
 
+        <SavedAccounts onSelectAccount={handleSelectAccount} currentRa={currentRa} />
+
         <LoginForm 
           onSearchTasks={handleSearchTasks} 
           onVerify={handleVerify}
           isLoading={isLoading} 
           userName={userName}
+          initialRa={currentRa}
         />
 
         <div className="mt-6 flex flex-col items-center text-center">
@@ -170,6 +229,17 @@ const Index = () => {
             <span>DISCORD BETA</span>
           </motion.a>
         </div>
+
+        {/* Admin button */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate("/admin-login")}
+          className="mt-6 flex items-center gap-2 px-4 py-2 bg-secondary/30 hover:bg-secondary/50 rounded-lg text-sm text-muted-foreground transition-colors"
+        >
+          <Shield className="w-4 h-4" />
+          Painel Admin
+        </motion.button>
 
         {/* Botão de sair do admin - só aparece durante manutenção */}
         {MAINTENANCE_CONFIG.MAINTENANCE_MODE && (
