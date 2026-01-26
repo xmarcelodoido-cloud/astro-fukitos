@@ -21,6 +21,14 @@ export function LoginForm({ onSearchTasks, onVerify, isLoading, userName, initia
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // Reset verification when user logs out (userName becomes null)
+  useEffect(() => {
+    if (!userName) {
+      setIsVerified(false);
+      setPassword("");
+    }
+  }, [userName]);
+
   useEffect(() => {
     if (initialRa && initialRa !== ra) {
       setRa(initialRa);
