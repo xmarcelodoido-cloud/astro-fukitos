@@ -101,6 +101,39 @@ export type Database = {
         }
         Relationships: []
       }
+      student_warnings: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          id: string
+          ra: string
+          reason: string
+          student_name: string | null
+          warned_at: string
+          warned_by: string | null
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          id?: string
+          ra: string
+          reason: string
+          student_name?: string | null
+          warned_at?: string
+          warned_by?: string | null
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          id?: string
+          ra?: string
+          reason?: string
+          student_name?: string | null
+          warned_at?: string
+          warned_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
