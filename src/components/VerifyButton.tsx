@@ -5,17 +5,21 @@ import { Check, Loader2 } from "lucide-react";
 interface VerifyButtonProps {
   onVerified: () => void;
   isVerified: boolean;
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
-export function VerifyButton({ onVerified, isVerified }: VerifyButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
+export function VerifyButton({ onVerified, isVerified, isLoading: externalLoading, disabled }: VerifyButtonProps) {
+  const [isInternalLoading, setIsInternalLoading] = useState(false);
+  
+  const isLoading = externalLoading || isInternalLoading;
 
   const handleClick = () => {
-    if (isVerified || isLoading) return;
+    if (isVerified || isLoading || disabled) return;
 
-    setIsLoading(true);
+    setIsInternalLoading(true);
     setTimeout(() => {
-      setIsLoading(false);
+      setIsInternalLoading(false);
       onVerified();
     }, 2000);
   };

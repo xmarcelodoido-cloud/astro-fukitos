@@ -8,14 +8,27 @@ import { VerifyButton } from "./VerifyButton";
 
 interface LoginFormProps {
   onSearchTasks: (filter: 'pending' | 'expired', ra: string, password: string) => void;
+  onVerify: (ra: string, password: string) => Promise<string | null>;
   isLoading: boolean;
+  userName: string | null;
 }
 
-export function LoginForm({ onSearchTasks, isLoading }: LoginFormProps) {
+export function LoginForm({ onSearchTasks, onVerify, isLoading, userName }: LoginFormProps) {
   const [ra, setRa] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const handleVerify = async () => {
+    if (!ra.trim() || !password.trim()) return;
+    setIsVerifying(true);
+    const name = await onVerify(ra.trim(), password);
+    setIsVerifying(false);
+    if (name) {
+      setIsVerified(true);
+    }
+  };
 
   const handleSearch = (filter: 'pending' | 'expired') => {
     if (!ra.trim()) return;
@@ -77,7 +90,23 @@ export function LoginForm({ onSearchTasks, isLoading }: LoginFormProps) {
       </div>
 
       <div className="flex flex-col gap-4 mt-2">
-        <VerifyButton onVerified={() => setIsVerified(true)} isVerified={isVerified} />
+        {userName ? (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center"
+          >
+            <span className="text-muted-foreground text-sm">Bem-vindo,</span>
+            <p className="text-primary font-bold text-lg mt-1">{userName}</p>
+          </motion.div>
+        ) : (
+          <VerifyButton 
+            onVerified={handleVerify} 
+            isVerified={isVerified} 
+            isLoading={isVerifying}
+            disabled={!ra.trim() || !password.trim()}
+          />
+        )}
 
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <Button
@@ -95,7 +124,7 @@ export function LoginForm({ onSearchTasks, isLoading }: LoginFormProps) {
             disabled={isLoading || !isVerified}
             className="w-full bg-secondary hover:bg-muted text-secondary-foreground font-semibold py-6"
           >
-            Atividades Expiradas
+          Atividades Expiradas
           </Button>
         </motion.div>
       </div>

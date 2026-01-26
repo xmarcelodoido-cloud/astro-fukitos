@@ -15,6 +15,8 @@ const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   const handleLogoutAdmin = () => {
     localStorage.removeItem("fukitos_admin_unlocked");
@@ -30,34 +32,41 @@ const Index = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  const handleSearchTasks = async (filter: 'pending' | 'expired', ra: string, password: string) => {
+  const handleVerify = async (ra: string, password: string): Promise<string | null> => {
+    try {
+      addNotification("VERIFICANDO CREDENCIAIS...", "info");
+      const loginData = await login(ra, password);
+      setUserName(loginData.nick);
+      setAuthToken(loginData.auth_token);
+      addNotification(`BEM-VINDO, ${loginData.nick.toUpperCase()}!`, "success");
+      return loginData.nick;
+    } catch (error) {
+      console.error(error);
+      addNotification("RA OU SENHA INVÁLIDOS", "error");
+      return null;
+    }
+  };
+
+  const handleSearchTasks = async (filter: 'pending' | 'expired', _ra: string, _password: string) => {
     if (isLoading) {
       addNotification("OPERAÇÃO EM ANDAMENTO", "info");
       return;
     }
 
-    if (!ra) {
-      addNotification("PREENCHA O RA", "error");
-      return;
-    }
-
-    if (!password) {
-      addNotification("PREENCHA A SENHA", "error");
+    if (!authToken || !userName) {
+      addNotification("FAÇA A VERIFICAÇÃO PRIMEIRO", "error");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      addNotification("AUTENTICANDO...", "info");
-      const loginData = await login(ra, password);
-
       addNotification("BUSCANDO LIÇÕES...", "info");
       addNotification("SE VOCÊ PAGOU POR ISSO VC FOI SCAMMADO", "info");
       addNotification("FAÇA SUAS LIÇÕES EM MINUTOS", "info");
       addNotification("AMO NUGGET", "info");
 
-      const fetchedTasks = await fetchUserTasks(loginData.auth_token, loginData.nick, filter);
+      const fetchedTasks = await fetchUserTasks(authToken, userName, filter);
 
       if (fetchedTasks.length > 0) {
         setTasks(fetchedTasks);
@@ -68,7 +77,7 @@ const Index = () => {
       }
     } catch (error) {
       console.error(error);
-      addNotification("RA OU SENHA INVÁLIDOS", "error");
+      addNotification("ERRO AO BUSCAR ATIVIDADES", "error");
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +147,12 @@ const Index = () => {
           Sala do futuro-CMSP WEB/Tarefas Sp.
         </p>
 
-        <LoginForm onSearchTasks={handleSearchTasks} isLoading={isLoading} />
+        <LoginForm 
+          onSearchTasks={handleSearchTasks} 
+          onVerify={handleVerify}
+          isLoading={isLoading} 
+          userName={userName}
+        />
 
         <div className="mt-6 flex flex-col items-center text-center">
           <span className="text-foreground text-sm mb-2">Entre no nosso servidor do Discord</span>
