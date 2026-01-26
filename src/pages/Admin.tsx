@@ -11,6 +11,7 @@ import {
   Trash2,
   Eye,
   AlertTriangle,
+  Bell,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,15 @@ interface BannedStudent {
   banned_at: string;
 }
 
+interface StudentWarning {
+  id: string;
+  ra: string;
+  student_name: string | null;
+  reason: string;
+  warned_at: string;
+  acknowledged: boolean;
+}
+
 export default function Admin() {
   const { user, isAdmin, isLoading, signOut } = useAdminAuth();
   const navigate = useNavigate();
@@ -61,6 +71,7 @@ export default function Admin() {
   
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [bannedStudents, setBannedStudents] = useState<BannedStudent[]>([]);
+  const [warnings, setWarnings] = useState<StudentWarning[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoadingData, setIsLoadingData] = useState(true);
   
@@ -70,9 +81,19 @@ export default function Admin() {
   const [banName, setBanName] = useState("");
   const [banReason, setBanReason] = useState("");
   
+  // Warning modal state
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
+  const [warningRa, setWarningRa] = useState("");
+  const [warningName, setWarningName] = useState("");
+  const [warningReason, setWarningReason] = useState("");
+  
   // Unban modal state
   const [unbanModalOpen, setUnbanModalOpen] = useState(false);
   const [selectedBan, setSelectedBan] = useState<BannedStudent | null>(null);
+
+  // Remove warning modal state
+  const [removeWarningModalOpen, setRemoveWarningModalOpen] = useState(false);
+  const [selectedWarning, setSelectedWarning] = useState<StudentWarning | null>(null);
 
   // Details modal state
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -92,7 +113,7 @@ export default function Admin() {
 
   const fetchData = async () => {
     setIsLoadingData(true);
-    await Promise.all([fetchLogs(), fetchBannedStudents()]);
+    await Promise.all([fetchLogs(), fetchBannedStudents(), fetchWarnings()]);
     setIsLoadingData(false);
   };
 
@@ -123,6 +144,20 @@ export default function Admin() {
     }
 
     setBannedStudents(data || []);
+  };
+
+  const fetchWarnings = async () => {
+    const { data, error } = await supabase
+      .from("student_warnings")
+      .select("*")
+      .order("warned_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching warnings:", error);
+      return;
+    }
+
+    setWarnings(data || []);
   };
 
   const handleBan = async () => {
@@ -170,6 +205,43 @@ export default function Admin() {
     fetchBannedStudents();
   };
 
+  const handleWarning = async () => {
+    if (!warningRa.trim() || !warningReason.trim()) {
+      toast({
+        title: "Erro",
+        description: "Preencha o RA e o motivo do aviso",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase.from("student_warnings").insert({
+      ra: warningRa.trim(),
+      student_name: warningName.trim() || null,
+      reason: warningReason.trim(),
+    });
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar aviso",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Sucesso",
+      description: `Aviso enviado para RA ${warningRa}`,
+    });
+
+    setWarningModalOpen(false);
+    setWarningRa("");
+    setWarningName("");
+    setWarningReason("");
+    fetchWarnings();
+  };
+
   const handleUnban = async () => {
     if (!selectedBan) return;
 
@@ -195,6 +267,33 @@ export default function Admin() {
     setUnbanModalOpen(false);
     setSelectedBan(null);
     fetchBannedStudents();
+  };
+
+  const handleRemoveWarning = async () => {
+    if (!selectedWarning) return;
+
+    const { error } = await supabase
+      .from("student_warnings")
+      .delete()
+      .eq("id", selectedWarning.id);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover aviso",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Sucesso",
+      description: `Aviso de ${selectedWarning.ra} foi removido`,
+    });
+
+    setRemoveWarningModalOpen(false);
+    setSelectedWarning(null);
+    fetchWarnings();
   };
 
   const handleLogout = async () => {
@@ -320,6 +419,10 @@ export default function Admin() {
               <Activity className="w-4 h-4 mr-2" />
               Logs
             </TabsTrigger>
+            <TabsTrigger value="warnings">
+              <Bell className="w-4 h-4 mr-2" />
+              Avisos
+            </TabsTrigger>
             <TabsTrigger value="banned">
               <Ban className="w-4 h-4 mr-2" />
               Banidos
@@ -381,19 +484,90 @@ export default function Admin() {
                             <Eye className="w-4 h-4" />
                           </Button>
                           {log.ra && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setBanRa(log.ra || "");
-                                setBanName(log.student_name || "");
-                                setBanModalOpen(true);
-                              }}
-                            >
-                              <Ban className="w-4 h-4 text-red-500" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Enviar aviso"
+                                onClick={() => {
+                                  setWarningRa(log.ra || "");
+                                  setWarningName(log.student_name || "");
+                                  setWarningModalOpen(true);
+                                }}
+                              >
+                                <Bell className="w-4 h-4 text-yellow-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Banir"
+                                onClick={() => {
+                                  setBanRa(log.ra || "");
+                                  setBanName(log.student_name || "");
+                                  setBanModalOpen(true);
+                                }}
+                              >
+                                <Ban className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </>
                           )}
                         </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="warnings">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-muted-foreground">
+                {warnings.length} avisos enviados ({warnings.filter(w => !w.acknowledged).length} pendentes)
+              </p>
+              <Button onClick={() => setWarningModalOpen(true)} variant="outline" className="border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10">
+                <Bell className="w-4 h-4 mr-2" />
+                Enviar Aviso
+              </Button>
+            </div>
+
+            <div className="border rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>RA</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Motivo</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {warnings.map((warning) => (
+                    <TableRow key={warning.id}>
+                      <TableCell className="font-mono">{warning.ra}</TableCell>
+                      <TableCell>{warning.student_name || "-"}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {warning.reason}
+                      </TableCell>
+                      <TableCell>{formatDate(warning.warned_at)}</TableCell>
+                      <TableCell>
+                        <span className={warning.acknowledged ? "text-green-500" : "text-yellow-500"}>
+                          {warning.acknowledged ? "Lido" : "Pendente"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedWarning(warning);
+                            setRemoveWarningModalOpen(true);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -561,6 +735,71 @@ export default function Admin() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Warning Modal */}
+      <Dialog open={warningModalOpen} onOpenChange={setWarningModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Aviso</DialogTitle>
+            <DialogDescription>
+              O estudante receberá um aviso ao tentar usar o sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">RA</label>
+              <Input
+                value={warningRa}
+                onChange={(e) => setWarningRa(e.target.value)}
+                placeholder="Digite o RA"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Nome (opcional)</label>
+              <Input
+                value={warningName}
+                onChange={(e) => setWarningName(e.target.value)}
+                placeholder="Nome do estudante"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Motivo do Aviso</label>
+              <Textarea
+                value={warningReason}
+                onChange={(e) => setWarningReason(e.target.value)}
+                placeholder="Explique o motivo do aviso"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarningModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleWarning} className="bg-yellow-600 hover:bg-yellow-700">
+              Enviar Aviso
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Warning Modal */}
+      <Dialog open={removeWarningModalOpen} onOpenChange={setRemoveWarningModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover Aviso</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja remover o aviso de {selectedWarning?.ra}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveWarningModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleRemoveWarning}>Remover</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

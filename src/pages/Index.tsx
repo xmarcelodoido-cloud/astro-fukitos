@@ -8,10 +8,12 @@ import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
 import { NotificationContainer, NotificationData } from "@/components/Notification";
 import { BannedScreen } from "@/components/BannedScreen";
+import { WarningScreen } from "@/components/WarningScreen";
 import { SavedAccounts, saveAccount } from "@/components/SavedAccounts";
 import { login, fetchUserTasks, processTasks, Task } from "@/lib/api";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { useBanCheck } from "@/hooks/useBanCheck";
+import { useWarningCheck } from "@/hooks/useWarningCheck";
 import { logger } from "@/lib/logger";
 import { MAINTENANCE_CONFIG } from "@/config/maintenance";
 
@@ -26,6 +28,7 @@ const Index = () => {
   const [currentRa, setCurrentRa] = useState<string>("");
   
   const { banInfo, checkBan, clearBanInfo } = useBanCheck();
+  const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
   
   // Pass user info to anti-inspect hook for logging
   useAntiInspect({ ra: currentRa, studentName: userName || undefined });
@@ -51,6 +54,9 @@ const Index = () => {
       if (banStatus.isBanned) {
         return null;
       }
+
+      // Check if RA has unacknowledged warnings
+      await checkWarning(ra);
 
       addNotification("VERIFICANDO CREDENCIAIS...", "info");
       const loginData = await login(ra, password);
@@ -161,6 +167,26 @@ const Index = () => {
         onBack={() => {
           clearBanInfo();
           setCurrentRa("");
+        }}
+      />
+    );
+  }
+
+  // Show warning screen if user has unacknowledged warning
+  if (warningInfo?.hasWarning && !warningInfo.acknowledged) {
+    return (
+      <WarningScreen
+        reason={warningInfo.reason || "Comportamento inadequado"}
+        warnedAt={warningInfo.warnedAt}
+        onAcknowledge={async () => {
+          const success = await acknowledgeWarning(warningInfo.id, currentRa);
+          return success;
+        }}
+        onBack={() => {
+          clearWarningInfo();
+          setCurrentRa("");
+          setUserName(null);
+          setAuthToken(null);
         }}
       />
     );

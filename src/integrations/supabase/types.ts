@@ -157,6 +157,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_warning: {
+        Args: { student_ra: string; warning_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
