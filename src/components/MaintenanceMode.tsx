@@ -103,9 +103,9 @@ export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModePro
           {!showPasswordInput ? (
             <button
               onClick={() => setShowPasswordInput(true)}
-              className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              className="text-[10px] text-muted-foreground/5 hover:text-muted-foreground/20 transition-colors select-none"
             >
-              Admin
+              •
             </button>
           ) : (
             <motion.div

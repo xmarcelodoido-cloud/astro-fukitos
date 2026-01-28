@@ -22,7 +22,7 @@ interface TaskWithScore extends Task {
 export function TaskModal({ isOpen, onClose, tasks, onStartTasks }: TaskModalProps) {
   const [tasksWithScore, setTasksWithScore] = useState<TaskWithScore[]>([]);
   const [minTime, setMinTime] = useState(1);
-  const [maxTime, setMaxTime] = useState(2);
+  const [maxTime, setMaxTime] = useState(5);
   const [selectAll, setSelectAll] = useState(false);
 
   useEffect(() => {
