@@ -16,6 +16,7 @@ export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModePro
   const [password, setPassword] = useState("");
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [error, setError] = useState("");
+  const [clickCount, setClickCount] = useState(0);
 
   const handleUnlock = () => {
     if (password === MAINTENANCE_CONFIG.ADMIN_PASSWORD) {
@@ -102,7 +103,14 @@ export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModePro
         <div className="mt-8">
           {!showPasswordInput ? (
             <button
-              onClick={() => setShowPasswordInput(true)}
+              onClick={() => {
+                const newCount = clickCount + 1;
+                setClickCount(newCount);
+                if (newCount >= 3) {
+                  setShowPasswordInput(true);
+                  setClickCount(0);
+                }
+              }}
               className="w-8 h-8 text-muted-foreground/10 hover:text-muted-foreground/30 transition-colors select-none flex items-center justify-center text-lg"
             >
               •
