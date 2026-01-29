@@ -26,6 +26,7 @@ const Index = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentRa, setCurrentRa] = useState<string>("");
+  const [adminClickCount, setAdminClickCount] = useState(0);
   
   const { banInfo, checkBan, clearBanInfo } = useBanCheck();
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
@@ -277,11 +278,18 @@ const Index = () => {
           </motion.a>
         </div>
 
-        {/* Admin button - fixed bottom right, nearly invisible */}
+        {/* Admin button - fixed bottom right, nearly invisible, requires 3 clicks */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => navigate("/admin-login")}
+          onClick={() => {
+            const newCount = adminClickCount + 1;
+            setAdminClickCount(newCount);
+            if (newCount >= 3) {
+              setAdminClickCount(0);
+              navigate("/admin-login");
+            }
+          }}
           className="fixed bottom-2 right-2 p-2 text-muted-foreground/5 hover:text-muted-foreground/15 transition-colors z-50 select-none"
         >
           <Shield className="w-3 h-3" />
