@@ -103,7 +103,7 @@ export const MaintenanceMode = ({ onUnlock, expectedReturn }: MaintenanceModePro
           {!showPasswordInput ? (
             <button
               onClick={() => setShowPasswordInput(true)}
-              className="text-[10px] text-muted-foreground/5 hover:text-muted-foreground/20 transition-colors select-none"
+              className="w-8 h-8 text-muted-foreground/10 hover:text-muted-foreground/30 transition-colors select-none flex items-center justify-center text-lg"
             >
               •
             </button>
