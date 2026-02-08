@@ -14,19 +14,17 @@ export const useBanCheck = () => {
   const checkBan = useCallback(async (ra: string): Promise<BanInfo> => {
     setIsChecking(true);
     try {
-      const { data, error } = await supabase
-        .from('banned_students')
-        .select('reason, banned_at')
-        .eq('ra', ra)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('check-ban', {
+        body: { ra },
+      });
 
       if (error) {
         console.error('Error checking ban status:', error);
         return { isBanned: false };
       }
 
-      const info: BanInfo = data
-        ? { isBanned: true, reason: data.reason, bannedAt: data.banned_at }
+      const info: BanInfo = data?.isBanned
+        ? { isBanned: true, reason: data.reason, bannedAt: data.bannedAt }
         : { isBanned: false };
 
       setBanInfo(info);
