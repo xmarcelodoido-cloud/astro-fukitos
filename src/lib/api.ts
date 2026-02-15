@@ -1,7 +1,7 @@
 const config = {
   API_BASE_URL: 'https://edusp-api.ip.tv',
   USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-  CATALYST_API_URL: 'https://catalyst.crimsonstrauss.xyz/complete',
+  CATALYST_API_URL: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/proxy-catalyst`,
   STATUS_SERVER_URL: 'https://statusbis.biscurim.space'
 };
 
