@@ -16,27 +16,22 @@ export const useWarningCheck = () => {
   const checkWarning = useCallback(async (ra: string): Promise<WarningInfo> => {
     setIsChecking(true);
     try {
-      const { data, error } = await supabase
-        .from('student_warnings')
-        .select('id, reason, warned_at, acknowledged')
-        .eq('ra', ra)
-        .eq('acknowledged', false)
-        .order('warned_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('check-warning', {
+        body: { ra },
+      });
 
       if (error) {
         console.error('Error checking warning status:', error);
         return { id: '', hasWarning: false };
       }
 
-      const info: WarningInfo = data
-        ? { 
+      const info: WarningInfo = data?.hasWarning
+        ? {
             id: data.id,
-            hasWarning: true, 
-            reason: data.reason, 
-            warnedAt: data.warned_at,
-            acknowledged: data.acknowledged
+            hasWarning: true,
+            reason: data.reason,
+            warnedAt: data.warnedAt,
+            acknowledged: data.acknowledged,
           }
         : { id: '', hasWarning: false };
 

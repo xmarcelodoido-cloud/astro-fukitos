@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.proxy-catalyst]
 verify_jwt = false
+
+[functions.log-activity]
+verify_jwt = false
+
+[functions.check-warning]
+verify_jwt = false
