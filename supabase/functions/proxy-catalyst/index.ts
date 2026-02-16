@@ -114,6 +114,19 @@ async function processTask(body: any): Promise<{ success: boolean; message: stri
   const { id, token, room, isDraft, minTime, maxTime } = body;
   const headers = getHeaders(token);
 
+  // Step 0: Initialize/apply the task first (required before answering)
+  const applyRes = await fetch(`${EDUSP_API}/tms/task/${id}/apply?preview_mode=false`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!applyRes.ok) {
+    const err = await applyRes.text();
+    throw new Error(`Apply/init failed: ${applyRes.status} - ${err}`);
+  }
+  // Consume the response
+  await applyRes.json();
+
   // Step 1: Create draft
   const draftRes = await fetch(`${EDUSP_API}/tms/task/${id}/answer`, {
     method: "POST",
