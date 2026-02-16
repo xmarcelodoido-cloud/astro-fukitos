@@ -56,11 +56,12 @@ Responda apenas com o texto da resposta, sem explicações adicionais.`;
   }
 }
 
-async function buildSubmission(answerData: any, isDraft: boolean): Promise<any> {
+async function buildSubmission(answerData: any, isDraft: boolean, durationSeconds: number): Promise<any> {
   const result: any = {
     status: isDraft ? "draft" : "submitted",
     accessed_on: answerData.accessed_on || "room",
     executed_on: answerData.executed_on,
+    duration: durationSeconds,
     answers: {},
   };
 
@@ -141,9 +142,8 @@ async function processTask(body: any): Promise<{ success: boolean; message: stri
 
   const { id: answerId } = await draftRes.json();
 
-  // Step 2: Wait (capped at 25s for edge function limits)
-  const waitMs = minTime ? Math.min((Math.random() * ((maxTime || 5) - minTime) + minTime) * 60000, 25000) : 2000;
-  await new Promise((r) => setTimeout(r, waitMs));
+  // Step 2: Brief wait (edge functions have ~25s limit, so we can't wait the full time)
+  await new Promise((r) => setTimeout(r, 3000));
 
   // Step 3: Get questions with answers
   const getRes = await fetch(
@@ -158,8 +158,13 @@ async function processTask(body: any): Promise<{ success: boolean; message: stri
 
   const answerData = await getRes.json();
 
+  // Calculate fake duration in seconds (between minTime and maxTime minutes)
+  const minSec = (minTime || 1) * 60;
+  const maxSec = (maxTime || 5) * 60;
+  const fakeDuration = Math.floor(Math.random() * (maxSec - minSec) + minSec);
+
   // Step 4: Build and submit
-  const submitBody = await buildSubmission(answerData, isDraft);
+  const submitBody = await buildSubmission(answerData, isDraft, fakeDuration);
 
   const submitRes = await fetch(`${EDUSP_API}/tms/task/${id}/answer/${answerId}`, {
     method: "PUT",
