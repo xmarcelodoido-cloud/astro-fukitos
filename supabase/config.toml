@@ -2,3 +2,6 @@ project_id = "vvsusclhesslwgfappyd"
 
 [functions.check-ban]
 verify_jwt = false
+
+[functions.proxy-catalyst]
+verify_jwt = false
