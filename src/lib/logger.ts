@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
 
 type LogType = 'login' | 'task_completed' | 'task_failed' | 'inspect_attempt' | 'ban_attempt' | 'error';
 
@@ -11,13 +10,15 @@ export const logger = {
     details?: Record<string, unknown>
   ): Promise<void> {
     try {
-      await supabase.from('activity_logs').insert([{
-        ra: ra ?? null,
-        student_name: studentName ?? null,
-        log_type: logType,
-        details: details as Json ?? null,
-        user_agent: navigator.userAgent,
-      }]);
+      await supabase.functions.invoke('log-activity', {
+        body: {
+          ra: ra ?? null,
+          student_name: studentName ?? null,
+          log_type: logType,
+          details: details ?? null,
+          user_agent: navigator.userAgent,
+        },
+      });
     } catch (error) {
       console.error('Failed to log activity:', error);
     }
