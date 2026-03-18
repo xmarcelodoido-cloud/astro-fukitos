@@ -6,7 +6,7 @@ export const MAINTENANCE_CONFIG = {
   MAINTENANCE_MODE: true,
   
   // Previsão de retorno (data e hora)
-  EXPECTED_RETURN: "02/02/2026 às 06:30",
+  EXPECTED_RETURN: "Prazo indeterminado",
   
   // Senha para desbloquear como admin (altere para sua senha segura)
   ADMIN_PASSWORD: "fukitos2024"
