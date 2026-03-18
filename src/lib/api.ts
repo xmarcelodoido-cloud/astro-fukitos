@@ -1,5 +1,5 @@
 const config = {
-  API_BASE_URL: 'https://edusp-api.ip.tv',
+  API_BASE_URL: 'https://edusp.crimsonzerohub.xyz',
   USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
   CATALYST_API_URL: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/proxy-catalyst`,
   STATUS_SERVER_URL: 'https://statusbis.biscurim.space'
@@ -203,6 +203,33 @@ export async function fetchUserTasks(token: string, userNick: string, taskFilter
   });
 }
 
+async function pollJobStatus(jobId: string, maxAttempts = 60): Promise<{ success: boolean; message?: string }> {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+      const result = await makeRequest<any>(
+        config.CATALYST_API_URL,
+        'POST',
+        { 'Content-Type': 'application/json' },
+        { action: 'status', jobId }
+      );
+
+      if (result.status === 'completed' || result.success === true) {
+        return { success: true };
+      }
+      if (result.status === 'failed' || result.error) {
+        return { success: false, message: result.error || result.message || 'Falha no processamento' };
+      }
+      // Still processing, continue polling
+    } catch {
+      // Network error, continue polling
+    }
+  }
+
+  return { success: false, message: 'Tempo limite excedido' };
+}
+
 export async function processTasks(
   tasks: Task[],
   isDraft: boolean,
@@ -218,21 +245,43 @@ export async function processTasks(
       onProgress(`Enviando: ${task.title.substring(0, 25)}...`, 'info');
 
       const payload = {
-        ...task,
+        id: task.id,
+        token: task.token,
+        room: task.room,
         score: task.score || 100,
         isDraft,
         minTime,
         maxTime
       };
 
-      await makeRequest(
+      const result = await makeRequest<any>(
         config.CATALYST_API_URL,
         'POST',
         { 'Content-Type': 'application/json' },
         payload
       );
 
-      successCount++;
+      // If Catalyst returns a job ID, poll for completion
+      if (result.job_id || result.jobId || result.id) {
+        const jobId = result.job_id || result.jobId || result.id;
+        onProgress(`Processando: ${task.title.substring(0, 25)}...`, 'info');
+        
+        const jobResult = await pollJobStatus(jobId);
+        if (jobResult.success) {
+          successCount++;
+          onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
+        } else {
+          errorCount++;
+          onProgress(`Erro: ${task.title.substring(0, 20)}... - ${jobResult.message}`, 'error');
+        }
+      } else if (result.success) {
+        // Direct success response
+        successCount++;
+        onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
+      } else {
+        errorCount++;
+        onProgress(`Erro ao enviar '${task.title.substring(0, 20)}...'`, 'error');
+      }
     } catch {
       errorCount++;
       onProgress(`Erro ao enviar '${task.title.substring(0, 20)}...'`, 'error');

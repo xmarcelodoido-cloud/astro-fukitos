@@ -218,23 +218,23 @@ const Index = () => {
         className="w-full max-w-sm flex flex-col items-center"
       >
         <motion.div
-          className="flex items-center gap-3 mb-2"
+          className="flex flex-col items-center mb-2"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <h1 className="text-5xl font-semibold text-gradient">FUKITOS</h1>
           <motion.img
             src={logo}
             alt="Logo FUKITOS"
-            className="w-14 h-auto"
+            className="w-16 h-auto mb-3"
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           />
+          <h1 className="text-4xl font-bold italic text-gradient tracking-wide">Fukitos</h1>
         </motion.div>
 
-        <p className="text-foreground text-center mb-6">
-          Sala do futuro-CMSP WEB/Tarefas Sp.
+        <p className="text-muted-foreground text-center mb-6 uppercase tracking-[0.25em] text-xs">
+          Sua plataforma de estudos
         </p>
 
         <SavedAccounts onSelectAccount={handleSelectAccount} currentRa={currentRa} />
