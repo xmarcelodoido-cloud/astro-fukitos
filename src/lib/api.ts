@@ -1,9 +1,4 @@
-const config = {
-  API_BASE_URL: 'https://edusp.crimsonzerohub.xyz',
-  USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-  CATALYST_API_URL: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/proxy-catalyst`,
-  STATUS_SERVER_URL: 'https://statusbis.biscurim.space'
-};
+const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/proxy-catalyst`;
 
 export interface Task {
   id: number;
@@ -28,67 +23,27 @@ interface Room {
   name: string;
 }
 
-function getDefaultHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'x-api-realm': 'edusp',
-    'x-api-platform': 'webclient',
-    'User-Agent': config.USER_AGENT,
-    'Connection': 'keep-alive',
-    'Sec-Fetch-Site': 'same-origin',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Dest': 'empty'
-  };
-}
-
-async function makeRequest<T>(url: string, method = 'GET', headers: Record<string, string> = {}, body: object | null = null): Promise<T> {
-  const options: RequestInit = {
-    method,
-    headers: { ...headers }
-  };
-
-  if (body !== null && body !== undefined && Object.keys(body).length > 0) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
+async function proxyRequest<T>(payload: object): Promise<T> {
+  const response = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`HTTP ${response.status} em ${method} ${url}: ${errorText}`);
+    throw new Error(`Proxy error: ${errorText}`);
   }
 
-  try {
-    return await response.json();
-  } catch {
-    return {} as T;
+  const data = await response.json();
+  if (data.success === false && data.error) {
+    throw new Error(data.error);
   }
+  return data as T;
 }
 
 export async function login(ra: string, senha: string): Promise<LoginData> {
-  const loginData = {
-    realm: "edusp",
-    platform: "webclient",
-    id: ra,
-    password: senha
-  };
-
-  const headers = {
-    'Accept': 'application/json',
-    'x-api-realm': 'edusp',
-    'x-api-platform': 'webclient',
-    'User-Agent': config.USER_AGENT,
-    'Content-Type': 'application/json',
-    'Referer': 'https://crimsonstrauss.xyz/',
-    'Origin': 'https://crimsonstrauss.xyz',
-    'Sec-Fetch-Site': 'cross-site',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Dest': 'empty',
-    'Priority': 'u=0'
-  };
-
-  return makeRequest<LoginData>(`${config.API_BASE_URL}/registration/edusp`, 'POST', headers, loginData);
+  return proxyRequest<LoginData>({ action: 'login', ra, password: senha });
 }
 
 async function fetchTasks(token: string, targetPublications: string[], taskFilter: string): Promise<Task[]> {
@@ -115,15 +70,10 @@ async function fetchTasks(token: string, targetPublications: string[], taskFilte
   const targetParams = targetPublications.map(target => `publication_target=${encodeURIComponent(target)}`).join('&');
   const paramsString = Object.entries(params).map(([key, value]) => `${key}=${value}`).join('&');
 
-  const url = `${config.API_BASE_URL}/tms/task/todo?${paramsString}&${targetParams}&${statusParams}`;
-
-  const headers = {
-    ...getDefaultHeaders(),
-    'x-api-key': token
-  };
+  const url = `/tms/task/todo?${paramsString}&${targetParams}&${statusParams}`;
 
   try {
-    const data = await makeRequest<Task[]>(url, 'GET', headers);
+    const data = await proxyRequest<Task[]>({ action: 'tasks', token, url });
     return data.map(task => ({
       ...task,
       token,
@@ -136,11 +86,7 @@ async function fetchTasks(token: string, targetPublications: string[], taskFilte
 }
 
 export async function fetchUserTasks(token: string, userNick: string, taskFilter: string): Promise<Task[]> {
-  const data = await makeRequest<{ rooms: Room[] }>(
-    `${config.API_BASE_URL}/room/user?list_all=true&with_cards=true`,
-    'GET',
-    { ...getDefaultHeaders(), 'x-api-key': token }
-  );
+  const data = await proxyRequest<{ rooms: Room[] }>({ action: 'rooms', token });
 
   if (!data.rooms || data.rooms.length === 0) {
     throw new Error('Nenhuma sala encontrada');
@@ -153,7 +99,6 @@ export async function fetchUserTasks(token: string, userNick: string, taskFilter
   data.rooms.forEach(room => {
     uniqueTargets.add(room.name);
     roomIdToNameMap.set(room.id.toString(), room.name);
-
     if (userNick) {
       uniqueTargets.add(`${room.name}:${userNick}`);
     }
@@ -175,58 +120,40 @@ export async function fetchUserTasks(token: string, userNick: string, taskFilter
   const allFetchedTasks = await fetchTasks(token, targetsArray, taskFilter);
 
   return allFetchedTasks.map(task => {
-    let effectiveRoomForExecution: string | null = null;
+    let effectiveRoom: string | null = null;
 
-    if (task.room_info && task.room_info.name) {
-      effectiveRoomForExecution = task.room_info.name;
+    if (task.room_info?.name) {
+      effectiveRoom = task.room_info.name;
     } else {
       const pubTarget = task.publication_target;
       if (roomIdToNameMap.has(pubTarget)) {
-        effectiveRoomForExecution = roomIdToNameMap.get(pubTarget) || null;
+        effectiveRoom = roomIdToNameMap.get(pubTarget) || null;
       } else if (typeof pubTarget === 'string' && pubTarget.includes(':')) {
-        effectiveRoomForExecution = pubTarget.split(':')[0];
+        effectiveRoom = pubTarget.split(':')[0];
       } else if (typeof pubTarget === 'string' && pubTarget.startsWith('r')) {
-        effectiveRoomForExecution = pubTarget;
+        effectiveRoom = pubTarget;
       }
     }
 
-    if (!effectiveRoomForExecution || !effectiveRoomForExecution.startsWith('r')) {
-      effectiveRoomForExecution = firstRoomName;
+    if (!effectiveRoom || !effectiveRoom.startsWith('r')) {
+      effectiveRoom = firstRoomName;
     }
 
-    return {
-      ...task,
-      token,
-      room: effectiveRoomForExecution,
-      type: taskFilter
-    };
+    return { ...task, token, room: effectiveRoom, type: taskFilter };
   });
 }
 
 async function pollJobStatus(jobId: string, maxAttempts = 60): Promise<{ success: boolean; message?: string }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(resolve => setTimeout(resolve, 3000));
-
     try {
-      const result = await makeRequest<any>(
-        config.CATALYST_API_URL,
-        'POST',
-        { 'Content-Type': 'application/json' },
-        { action: 'status', jobId }
-      );
-
-      if (result.status === 'completed' || result.success === true) {
-        return { success: true };
-      }
-      if (result.status === 'failed' || result.error) {
-        return { success: false, message: result.error || result.message || 'Falha no processamento' };
-      }
-      // Still processing, continue polling
+      const result = await proxyRequest<any>({ action: 'status', jobId });
+      if (result.status === 'completed' || result.success === true) return { success: true };
+      if (result.status === 'failed' || result.error) return { success: false, message: result.error || result.message || 'Falha' };
     } catch {
-      // Network error, continue polling
+      // continue polling
     }
   }
-
   return { success: false, message: 'Tempo limite excedido' };
 }
 
@@ -244,28 +171,20 @@ export async function processTasks(
     try {
       onProgress(`Enviando: ${task.title.substring(0, 25)}...`, 'info');
 
-      const payload = {
+      const result = await proxyRequest<any>({
+        action: 'complete',
         id: task.id,
         token: task.token,
         room: task.room,
         score: task.score || 100,
         isDraft,
         minTime,
-        maxTime
-      };
+        maxTime,
+      });
 
-      const result = await makeRequest<any>(
-        config.CATALYST_API_URL,
-        'POST',
-        { 'Content-Type': 'application/json' },
-        payload
-      );
-
-      // If Catalyst returns a job ID, poll for completion
       if (result.job_id || result.jobId || result.id) {
         const jobId = result.job_id || result.jobId || result.id;
         onProgress(`Processando: ${task.title.substring(0, 25)}...`, 'info');
-        
         const jobResult = await pollJobStatus(jobId);
         if (jobResult.success) {
           successCount++;
@@ -275,7 +194,6 @@ export async function processTasks(
           onProgress(`Erro: ${task.title.substring(0, 20)}... - ${jobResult.message}`, 'error');
         }
       } else if (result.success) {
-        // Direct success response
         successCount++;
         onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
       } else {
