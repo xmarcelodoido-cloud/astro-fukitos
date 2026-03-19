@@ -2,12 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const EDUSP_API = "https://edusp.crimsonzerohub.xyz";
 const CATALYST_API = "https://catalyst.crimsonzerohub.xyz";
-const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36";
+const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
 function eduspHeaders(token?: string) {
   const h: Record<string, string> = {
@@ -16,6 +16,8 @@ function eduspHeaders(token?: string) {
     "x-api-realm": "edusp",
     "x-api-platform": "webclient",
     "User-Agent": USER_AGENT,
+    "origin": "https://saladofuturo.educacao.sp.gov.br",
+    "referer": "https://saladofuturo.educacao.sp.gov.br/",
   };
   if (token) h["x-api-key"] = token;
   return h;
@@ -67,7 +69,6 @@ serve(async (req) => {
 
       case "tasks": {
         const { token, url } = payload;
-        // url is the full query string path for tasks
         const res = await fetch(`${EDUSP_API}${url}`, {
           method: "GET",
           headers: eduspHeaders(token),
@@ -81,16 +82,46 @@ serve(async (req) => {
       }
 
       case "complete": {
+        // Build exact payload matching Eclipse Lunar's tfSendTasks format
+        const taskObj = { ...payload.taskData };
+        const taskId = taskObj.id;
+        taskObj.task_id = taskId;
+        taskObj.score = 100;
+        taskObj.is_prova = false;
+        delete taskObj.id;
+
+        const catalystPayload = {
+          tasks: [taskObj],
+          auth_token: payload.token,
+          publication_targets: payload.publicationTargets || [],
+          room_name_for_apply: payload.room || payload.taskData?.publication_target || "",
+          time_min: payload.minTime || 1,
+          time_max: payload.maxTime || 2,
+          is_draft: payload.isDraft || false,
+          salvar_rascunho: payload.isDraft || false,
+          user_nick: payload.userNick || "",
+        };
+
         const res = await fetch(`${CATALYST_API}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(catalystPayload),
         });
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`Catalyst submit failed: ${res.status} - ${err}`);
+        
+        let responseData;
+        try {
+          responseData = await res.json();
+        } catch {
+          const text = await res.text();
+          throw new Error(`Catalyst response not JSON: ${res.status} - ${text}`);
         }
-        result = await res.json();
+
+        if (!res.ok && !responseData?.success) {
+          throw new Error(`Catalyst submit failed: ${res.status} - ${JSON.stringify(responseData)}`);
+        }
+
+        // Return the response along with the original task id for job_id mapping
+        result = { ...responseData, _taskId: taskId };
         break;
       }
 
