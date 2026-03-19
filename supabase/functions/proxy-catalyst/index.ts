@@ -82,25 +82,34 @@ serve(async (req) => {
       }
 
       case "complete": {
-        // Build exact payload matching Eclipse Lunar's tfSendTasks format
-        const taskObj = { ...payload.taskData };
-        const taskId = taskObj.id;
-        taskObj.task_id = taskId;
-        taskObj.score = 100;
-        taskObj.is_prova = false;
-        delete taskObj.id;
+        // Build payload exactly matching Eclipse Lunar's tfSendTasks:
+        // tasks: [{ ...task, score:100, is_prova:false, task_id:task.id }]
+        // Then delete payload.tasks[0].id
+        const rawTask = payload.taskData;
+        const taskId = rawTask.id;
+        
+        // Spread the full raw task, add required fields, remove id
+        const taskForCatalyst = { 
+          ...rawTask, 
+          score: payload.score || 100, 
+          is_prova: false, 
+          task_id: taskId 
+        };
+        delete taskForCatalyst.id;
 
         const catalystPayload = {
-          tasks: [taskObj],
+          tasks: [taskForCatalyst],
           auth_token: payload.token,
           publication_targets: payload.publicationTargets || [],
-          room_name_for_apply: payload.room || payload.taskData?.publication_target || "",
+          room_name_for_apply: rawTask.publication_target || payload.room || "",
           time_min: payload.minTime || 1,
-          time_max: payload.maxTime || 2,
+          time_max: payload.maxTime || 3,
           is_draft: payload.isDraft || false,
           salvar_rascunho: payload.isDraft || false,
           user_nick: payload.userNick || "",
         };
+
+        console.log(`[complete] Sending to Catalyst: task_id=${taskId}, room=${catalystPayload.room_name_for_apply}, targets=${catalystPayload.publication_targets.length}, time=${catalystPayload.time_min}-${catalystPayload.time_max}, draft=${catalystPayload.is_draft}`);
 
         const res = await fetch(`${CATALYST_API}/complete`, {
           method: "POST",
@@ -108,16 +117,18 @@ serve(async (req) => {
           body: JSON.stringify(catalystPayload),
         });
         
+        const responseText = await res.text();
+        console.log(`[complete] Catalyst response: status=${res.status}, body=${responseText.substring(0, 500)}`);
+
         let responseData;
         try {
-          responseData = await res.json();
+          responseData = JSON.parse(responseText);
         } catch {
-          const text = await res.text();
-          throw new Error(`Catalyst response not JSON: ${res.status} - ${text}`);
+          throw new Error(`Catalyst response not JSON: ${res.status} - ${responseText}`);
         }
 
         if (!res.ok && !responseData?.success) {
-          throw new Error(`Catalyst submit failed: ${res.status} - ${JSON.stringify(responseData)}`);
+          throw new Error(`Catalyst submit failed: ${res.status} - ${responseText}`);
         }
 
         // Return the response along with the original task id for job_id mapping
@@ -147,6 +158,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error(`[proxy-catalyst] Error: ${error.message}`);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
