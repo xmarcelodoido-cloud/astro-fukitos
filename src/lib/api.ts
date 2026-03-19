@@ -11,17 +11,27 @@ export interface Task {
     name: string;
   };
   score?: number;
+  // Keep full task data for Catalyst payload
+  _rawData?: Record<string, any>;
 }
 
 interface LoginData {
   auth_token: string;
   nick: string;
+  external_id?: string;
 }
 
 interface Room {
   id: number;
   name: string;
 }
+
+// Store session data for Catalyst calls
+let sessionData: {
+  token: string;
+  nick: string;
+  targets: string[];
+} | null = null;
 
 async function proxyRequest<T>(payload: object): Promise<T> {
   const response = await fetch(PROXY_URL, {
@@ -43,7 +53,14 @@ async function proxyRequest<T>(payload: object): Promise<T> {
 }
 
 export async function login(ra: string, senha: string): Promise<LoginData> {
-  return proxyRequest<LoginData>({ action: 'login', ra, password: senha });
+  const result = await proxyRequest<LoginData>({ action: 'login', ra, password: senha });
+  // Store session info
+  sessionData = {
+    token: result.auth_token,
+    nick: result.nick,
+    targets: [],
+  };
+  return result;
 }
 
 async function fetchTasks(token: string, targetPublications: string[], taskFilter: string): Promise<Task[]> {
@@ -73,12 +90,13 @@ async function fetchTasks(token: string, targetPublications: string[], taskFilte
   const url = `/tms/task/todo?${paramsString}&${targetParams}&${statusParams}`;
 
   try {
-    const data = await proxyRequest<Task[]>({ action: 'tasks', token, url });
+    const data = await proxyRequest<any[]>({ action: 'tasks', token, url });
     return data.map(task => ({
       ...task,
       token,
       room: task.publication_target,
-      type: taskFilter
+      type: taskFilter,
+      _rawData: task, // Keep full task data for Catalyst
     }));
   } catch {
     return [];
@@ -102,21 +120,27 @@ export async function fetchUserTasks(token: string, userNick: string, taskFilter
     if (userNick) {
       uniqueTargets.add(`${room.name}:${userNick}`);
     }
-  });
-
-  const roomUserJsonString = JSON.stringify(data);
-  const idMatches = roomUserJsonString.match(/"id"\s*:\s*(\d+)(?!\d)/g) || [];
-  idMatches.forEach(m => {
-    const match = m.match(/\d+/);
-    if (match) {
-      const id = match[0];
-      if (id && !roomIdToNameMap.has(id) && !uniqueTargets.has(id)) {
-        uniqueTargets.add(id);
-      }
+    // Add numeric IDs (3-4 digits)
+    const idStr = room.id.toString();
+    if (/^\d{3,4}$/.test(idStr)) {
+      uniqueTargets.add(idStr);
     }
   });
 
+  const roomUserJsonString = JSON.stringify(data);
+  const idMatches = roomUserJsonString.match(/"id"\s*:\s*(\d{3,4})(?!\d)/g) || [];
+  idMatches.forEach(m => {
+    const match = m.match(/\d+/);
+    if (match) uniqueTargets.add(match[0]);
+  });
+
   const targetsArray = Array.from(uniqueTargets);
+  
+  // Store targets for Catalyst calls
+  if (sessionData) {
+    sessionData.targets = targetsArray;
+  }
+
   const allFetchedTasks = await fetchTasks(token, targetsArray, taskFilter);
 
   return allFetchedTasks.map(task => {
@@ -143,15 +167,26 @@ export async function fetchUserTasks(token: string, userNick: string, taskFilter
   });
 }
 
+function parseEstimatedMinutes(message?: string): number {
+  if (!message) return 2;
+  const m = message.match(/~?\s*(\d+)\s*min/i);
+  if (m) return Math.max(1, parseInt(m[1]));
+  const s = message.match(/~?\s*(\d+)\s*s(?:ec)?/i);
+  if (s) return Math.max(1, Math.ceil(parseInt(s[1]) / 60));
+  return 2;
+}
+
 async function pollJobStatus(jobId: string, maxAttempts = 60): Promise<{ success: boolean; message?: string }> {
   for (let i = 0; i < maxAttempts; i++) {
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
     try {
       const result = await proxyRequest<any>({ action: 'status', jobId });
-      if (result.status === 'completed' || result.success === true) return { success: true };
-      if (result.status === 'failed' || result.error) return { success: false, message: result.error || result.message || 'Falha' };
+      // Status uses Portuguese: 'pendente' | 'concluido' | 'erro'
+      if (result.status === 'concluido') return { success: true };
+      if (result.status === 'erro') return { success: false, message: result.message || 'Erro no processamento' };
+      // 'pendente' = still processing, continue polling
     } catch {
-      // continue polling
+      // continue polling on network error
     }
   }
   return { success: false, message: 'Tempo limite excedido' };
@@ -171,38 +206,49 @@ export async function processTasks(
     try {
       onProgress(`Enviando: ${task.title.substring(0, 25)}...`, 'info');
 
+      // Send with exact Catalyst payload format
       const result = await proxyRequest<any>({
         action: 'complete',
-        id: task.id,
+        taskData: task._rawData || task,
         token: task.token,
+        publicationTargets: sessionData?.targets || [],
         room: task.room,
-        score: task.score || 100,
-        isDraft,
         minTime,
         maxTime,
+        isDraft,
+        userNick: sessionData?.nick || '',
       });
 
-      if (result.job_id || result.jobId || result.id) {
-        const jobId = result.job_id || result.jobId || result.id;
-        onProgress(`Processando: ${task.title.substring(0, 25)}...`, 'info');
-        const jobResult = await pollJobStatus(jobId);
-        if (jobResult.success) {
+      if (result?.success) {
+        const estimatedMin = parseEstimatedMinutes(result.message);
+        const taskId = String(result._taskId || task.id);
+        
+        // Get job_id from response (job_ids map)
+        const jobId = result.job_ids?.[taskId] || null;
+        
+        if (jobId) {
+          onProgress(`Processando: ${task.title.substring(0, 25)}... (~${estimatedMin} min)`, 'info');
+          const jobResult = await pollJobStatus(jobId);
+          if (jobResult.success) {
+            successCount++;
+            onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
+          } else {
+            errorCount++;
+            onProgress(`Erro: ${task.title.substring(0, 20)}... - ${jobResult.message}`, 'error');
+          }
+        } else {
+          // No job_id but success = completed immediately
           successCount++;
           onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
-        } else {
-          errorCount++;
-          onProgress(`Erro: ${task.title.substring(0, 20)}... - ${jobResult.message}`, 'error');
         }
-      } else if (result.success) {
-        successCount++;
-        onProgress(`Concluído: ${task.title.substring(0, 25)}`, 'success');
       } else {
         errorCount++;
-        onProgress(`Erro ao enviar '${task.title.substring(0, 20)}...'`, 'error');
+        const errMsg = result?.message || result?.error || 'Resposta inválida';
+        onProgress(`Erro: ${task.title.substring(0, 20)}... - ${errMsg}`, 'error');
       }
-    } catch {
+    } catch (err: any) {
       errorCount++;
-      onProgress(`Erro ao enviar '${task.title.substring(0, 20)}...'`, 'error');
+      onProgress(`Erro ao enviar '${task.title.substring(0, 20)}...' - ${err.message || ''}`, 'error');
     }
 
     await new Promise(resolve => setTimeout(resolve, 500));
