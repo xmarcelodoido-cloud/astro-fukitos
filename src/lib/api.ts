@@ -210,6 +210,7 @@ export async function processTasks(
       const result = await proxyRequest<any>({
         action: 'complete',
         taskData: task._rawData || task,
+        score: task.score || 100,
         token: task.token,
         publicationTargets: sessionData?.targets || [],
         room: task.room,
