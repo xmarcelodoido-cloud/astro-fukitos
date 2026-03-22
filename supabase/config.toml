@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.check-warning]
 verify_jwt = false
+
+[functions.save-task-result]
+verify_jwt = false
