@@ -134,6 +134,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_results: {
+        Row: {
+          created_at: string
+          id: string
+          ra: string
+          room: string | null
+          score: number | null
+          success: boolean | null
+          task_id: string
+          time_spent: number | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ra: string
+          room?: string | null
+          score?: number | null
+          success?: boolean | null
+          task_id: string
+          time_spent?: number | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ra?: string
+          room?: string | null
+          score?: number | null
+          success?: boolean | null
+          task_id?: string
+          time_spent?: number | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

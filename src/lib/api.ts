@@ -71,6 +71,28 @@ export async function fetchUserTasks(
   }));
 }
 
+// ==================== SALVAR RESULTADO NO BANCO ====================
+
+async function saveToDatabase(ra: string, task: Task, success: boolean, score: number, time: number) {
+  try {
+    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-task-result`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ra,
+        task_id: String(task.id),
+        title: task.title,
+        score,
+        time_spent: time,
+        success,
+        room: task.room,
+      }),
+    });
+  } catch (e) {
+    console.error("Erro ao salvar resultado:", e);
+  }
+}
+
 // ==================== FAZER AS TAREFAS ====================
 
 export async function processTasks(
@@ -78,7 +100,8 @@ export async function processTasks(
   isDraft: boolean,
   minTime: number,
   maxTime: number,
-  onProgress: (msg: string, type: "info" | "success" | "error") => void
+  onProgress: (msg: string, type: "info" | "success" | "error") => void,
+  ra?: string
 ) {
   let success = 0;
   let fail = 0;
@@ -102,9 +125,12 @@ export async function processTasks(
       const result = await proxyRequest<any>(payload);
 
       if (result.success) {
+        const timeSpent = Math.floor(Math.random() * (maxTime - minTime) + minTime) * 60;
+        if (ra) await saveToDatabase(ra, task, true, payload.score, timeSpent);
         success++;
         onProgress(`✅ ${task.title.slice(0, 25)} concluído`, "success");
       } else {
+        if (ra) await saveToDatabase(ra, task, false, 0, 0);
         fail++;
         onProgress(`❌ ${task.title.slice(0, 25)} falhou`, "error");
       }
@@ -113,7 +139,6 @@ export async function processTasks(
       onProgress(`Erro: ${task.title.slice(0, 20)} - ${err.message}`, "error");
     }
 
-    // Delay humano entre tarefas
     await new Promise(r => setTimeout(r, 1200 + Math.random() * 2500));
   }
 

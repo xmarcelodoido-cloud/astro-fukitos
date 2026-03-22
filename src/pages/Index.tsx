@@ -147,14 +147,14 @@ const Index = () => {
       async (message, type) => {
         addNotification(message, type);
         
-        // Log task results
         const taskTitle = message.includes("'") ? message.split("'")[1] : "";
         if (type === "success" && currentRa && userName) {
           await logger.logTaskCompleted(currentRa, userName, "", taskTitle);
         } else if (type === "error" && currentRa && userName) {
           await logger.logTaskFailed(currentRa, userName, "", taskTitle, message);
         }
-      }
+      },
+      currentRa
     );
 
     if (result.success > 0) {
