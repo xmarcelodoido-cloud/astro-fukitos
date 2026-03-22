@@ -68,11 +68,42 @@ serve(async (req) => {
       }
 
       case "tasks": {
-        const { token, url } = payload;
+        const { token, filter, targets } = payload;
+
+        // Build query params based on filter type
+        const params: Record<string, string | number | boolean> = {
+          limit: 100,
+          offset: 0,
+          with_answer: true,
+          with_apply_moment: true,
+          is_exam: false,
+          is_essay: false,
+        };
+
+        if (filter === "expired") {
+          params.expired_only = true;
+          params.filter_expired = false;
+        } else {
+          params.expired_only = false;
+          params.filter_expired = true;
+        }
+
+        const paramsString = Object.entries(params)
+          .map(([k, v]) => `${k}=${v}`)
+          .join("&");
+
+        const statusParams = `answer_statuses=${encodeURIComponent("pending")}&answer_statuses=${encodeURIComponent("draft")}`;
+        const targetParams = (targets || [])
+          .map((t: string) => `publication_target=${encodeURIComponent(t)}`)
+          .join("&");
+
+        const url = `/tms/task/todo?${paramsString}&${targetParams}&${statusParams}`;
+
         const res = await fetch(`${EDUSP_API}${url}`, {
           method: "GET",
           headers: eduspHeaders(token),
         });
+
         if (!res.ok) {
           const err = await res.text();
           throw new Error(`Tasks failed: ${res.status} - ${err}`);
@@ -82,25 +113,22 @@ serve(async (req) => {
       }
 
       case "complete": {
-        // Build payload exactly matching Eclipse Lunar's tfSendTasks:
-        // tasks: [{ ...task, score:100, is_prova:false, task_id:task.id }]
-        // Then delete payload.tasks[0].id
         const rawTask = payload.taskData;
         const taskId = rawTask.id;
-        
-        // Spread the full raw task, add required fields, remove id
-        const taskForCatalyst = { 
-          ...rawTask, 
-          score: payload.score || 100, 
-          is_prova: false, 
-          task_id: taskId 
+
+        // Build Catalyst payload matching Eclipse Lunar format
+        const taskForCatalyst = {
+          ...rawTask,
+          score: payload.score || 100,
+          is_prova: false,
+          task_id: taskId,
         };
         delete taskForCatalyst.id;
 
         const catalystPayload = {
           tasks: [taskForCatalyst],
           auth_token: payload.token,
-          publication_targets: payload.publicationTargets || [],
+          publication_targets: [],
           room_name_for_apply: rawTask.publication_target || payload.room || "",
           time_min: payload.minTime || 1,
           time_max: payload.maxTime || 3,
@@ -109,16 +137,16 @@ serve(async (req) => {
           user_nick: payload.userNick || "",
         };
 
-        console.log(`[complete] Sending to Catalyst: task_id=${taskId}, room=${catalystPayload.room_name_for_apply}, targets=${catalystPayload.publication_targets.length}, time=${catalystPayload.time_min}-${catalystPayload.time_max}, draft=${catalystPayload.is_draft}`);
+        console.log(`[complete] task_id=${taskId}, room=${catalystPayload.room_name_for_apply}, draft=${catalystPayload.is_draft}`);
 
         const res = await fetch(`${CATALYST_API}/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(catalystPayload),
         });
-        
+
         const responseText = await res.text();
-        console.log(`[complete] Catalyst response: status=${res.status}, body=${responseText.substring(0, 500)}`);
+        console.log(`[complete] Catalyst: status=${res.status}, body=${responseText.substring(0, 500)}`);
 
         let responseData;
         try {
@@ -131,7 +159,6 @@ serve(async (req) => {
           throw new Error(`Catalyst submit failed: ${res.status} - ${responseText}`);
         }
 
-        // Return the response along with the original task id for job_id mapping
         result = { ...responseData, _taskId: taskId };
         break;
       }
