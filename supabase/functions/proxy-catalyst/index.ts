@@ -138,6 +138,7 @@ serve(async (req) => {
         };
 
         console.log(`[complete] task_id=${taskId}, room=${catalystPayload.room_name_for_apply}, draft=${catalystPayload.is_draft}`);
+        console.log(`[complete] Full payload: ${JSON.stringify(catalystPayload).substring(0, 1000)}`);
 
         const res = await fetch(`${CATALYST_API}/complete`, {
           method: "POST",
@@ -146,7 +147,7 @@ serve(async (req) => {
         });
 
         const responseText = await res.text();
-        console.log(`[complete] Catalyst: status=${res.status}, body=${responseText.substring(0, 500)}`);
+        console.log(`[complete] Catalyst response: status=${res.status}, body=${responseText.substring(0, 1000)}`);
 
         let responseData;
         try {
@@ -159,7 +160,42 @@ serve(async (req) => {
           throw new Error(`Catalyst submit failed: ${res.status} - ${responseText}`);
         }
 
-        result = { ...responseData, _taskId: taskId };
+        // If Catalyst returns a job_id, poll for completion
+        const jobId = responseData?.job_id || responseData?.jobId;
+        if (jobId) {
+          console.log(`[complete] Job ${jobId} submitted, polling for status...`);
+          let jobResult = null;
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            const jobRes = await fetch(`${CATALYST_API}/job/${jobId}`, {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            });
+            const jobText = await jobRes.text();
+            console.log(`[complete] Poll ${i + 1}: ${jobText.substring(0, 500)}`);
+            try {
+              jobResult = JSON.parse(jobText);
+            } catch {
+              continue;
+            }
+            const status = jobResult?.status || jobResult?.state;
+            if (status === "completed" || status === "done" || status === "finished" || status === "success") {
+              console.log(`[complete] Job ${jobId} completed successfully`);
+              result = { success: true, ...jobResult, _taskId: taskId };
+              break;
+            }
+            if (status === "failed" || status === "error") {
+              throw new Error(`Job ${jobId} failed: ${JSON.stringify(jobResult)}`);
+            }
+          }
+          if (!result) {
+            // If polling exhausted, return last known state
+            console.log(`[complete] Job ${jobId} polling timeout, last state: ${JSON.stringify(jobResult)}`);
+            result = { success: true, ...jobResult, _taskId: taskId };
+          }
+        } else {
+          result = { ...responseData, _taskId: taskId };
+        }
         break;
       }
 
