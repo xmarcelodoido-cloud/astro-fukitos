@@ -5,13 +5,15 @@ export interface Task {
   title: string;
   token: string;
   room: string;
+  roomCode: string;
   type: string;
   publication_target: string;
   score?: number;
+  answer_id?: number;
   _rawData?: any;
 }
 
-let sessionData: { token: string; nick: string } | null = null;
+let sessionData: { token: string; nick: string; roomCode: string } | null = null;
 
 async function proxyRequest<T = any>(payload: any): Promise<T> {
   const res = await fetch(PROXY_URL, {
@@ -36,8 +38,24 @@ async function proxyRequest<T = any>(payload: any): Promise<T> {
 
 export async function login(ra: string, senha: string) {
   const data = await proxyRequest<any>({ action: "login", ra, password: senha });
-  sessionData = { token: data.auth_token, nick: data.nick };
-  return data;
+
+  // Get rooms to determine best roomCode (like Taskitos)
+  const roomsRes = await proxyRequest<any>({ action: "rooms", token: data.auth_token });
+  const rooms = roomsRes.rooms || [];
+
+  // Pick best room: prefer rooms with grade patterns, then most operators
+  const gradeRooms = rooms.filter((r: any) => r.topic && /[º°ª]/.test(r.topic));
+  const candidates = gradeRooms.length ? gradeRooms : rooms;
+  const bestRoom = candidates.reduce((best: any, r: any) => {
+    const bestOps = best?.oper?.length || 0;
+    const rOps = r?.oper?.length || 0;
+    return rOps > bestOps ? r : best;
+  }, candidates[0]);
+
+  const roomCode = bestRoom?.name || "";
+
+  sessionData = { token: data.auth_token, nick: data.nick, roomCode };
+  return { ...data, roomCode };
 }
 
 // ==================== BUSCAR TAREFAS ====================
@@ -54,19 +72,23 @@ export async function fetchUserTasks(
   }
 
   const targets = [...new Set(roomsRes.rooms.map((r: any) => r.name))] as string[];
+  const roomCode = sessionData?.roomCode || targets[0] || "";
 
   const tasksRes = await proxyRequest<any[]>({
     action: "tasks",
     token,
     filter,
     targets,
+    roomCode,
   });
 
   return (tasksRes || []).map((t: any) => ({
     ...t,
     token,
     room: t.room_info?.name || t.publication_target,
+    roomCode,
     type: filter,
+    answer_id: t.answer_id || 0,
     _rawData: t,
   }));
 }
@@ -115,14 +137,18 @@ export async function processTasks(
         taskData: task._rawData || task,
         score: task.score || 100,
         token: task.token,
-        room: task.room,
+        roomCode: task.roomCode,
         isDraft,
         minTime,
         maxTime,
-        userNick: sessionData?.nick || "",
       };
 
       const result = await proxyRequest<any>(payload);
+
+      if (result.skipped) {
+        onProgress(`⏭️ ${task.title.slice(0, 25)} pulado (${result.reason})`, "info");
+        continue;
+      }
 
       if (result.success) {
         const timeSpent = Math.floor(Math.random() * (maxTime - minTime) + minTime) * 60;

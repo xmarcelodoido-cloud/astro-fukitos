@@ -65,6 +65,7 @@ const Index = () => {
       setUserName(loginData.nick);
       setAuthToken(loginData.auth_token);
       setCurrentRa(ra);
+      // roomCode is now stored in sessionData inside api.ts
       
       // Log the login
       await logger.logLogin(ra, loginData.nick);

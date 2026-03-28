@@ -5,16 +5,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EDUSP_API = "https://edusp.crimsonzerohub.xyz";
-const CATALYST_API = "https://catalyst.crimsonzerohub.xyz";
+const EDUSP_API = "https://edusp-api.ip.tv";
+const TASKITOS_API = "https://taskitos.cupiditys.lol";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
+function randomHex(len: number): string {
+  const arr = new Uint8Array(len / 2);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function eduspHeaders(token?: string) {
+  const reqId = randomHex(32);
+  const traceId = randomHex(16);
   const h: Record<string, string> = {
+    "Accept": "*/*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
     "Content-Type": "application/json",
-    "Accept": "application/json",
-    "x-api-realm": "edusp",
-    "x-api-platform": "webclient",
+    "Request-Id": `|${reqId}.${traceId}`,
+    "Traceparent": `00-${reqId}-${traceId}-01`,
+    "X-Api-Realm": "edusp",
+    "X-Api-Platform": "webclient",
     "User-Agent": USER_AGENT,
     "origin": "https://saladofuturo.educacao.sp.gov.br",
     "referer": "https://saladofuturo.educacao.sp.gov.br/",
@@ -36,21 +47,47 @@ serve(async (req) => {
 
     switch (action) {
       case "login": {
-        const res = await fetch(`${EDUSP_API}/registration/edusp`, {
+        // Step 1: Login via SED integracoes (like Taskitos)
+        const sedRes = await fetch(
+          `${TASKITOS_API}/p/https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken`,
+          {
+            method: "POST",
+            headers: {
+              "Accept": "*/*",
+              "Accept-Language": "pt-BR,pt;q=0.5",
+              "Content-Type": "application/json",
+              "ocp-apim-subscription-key": "d701a2043aa24d7ebb37e9adf60d043b",
+            },
+            body: JSON.stringify({
+              user: payload.ra,
+              senha: payload.password,
+            }),
+          }
+        );
+
+        if (!sedRes.ok) {
+          const err = await sedRes.text();
+          if (err.toLowerCase().includes("invalid") || err.toLowerCase().includes("incorretos")) {
+            throw new Error("RA ou senha inválidos");
+          }
+          throw new Error(`Login failed: ${sedRes.status} - ${err}`);
+        }
+
+        const sedData = await sedRes.json();
+
+        // Step 2: Exchange token via edusp
+        const tokenRes = await fetch(`${EDUSP_API}/registration/edusp/token`, {
           method: "POST",
           headers: eduspHeaders(),
-          body: JSON.stringify({
-            realm: "edusp",
-            platform: "webclient",
-            id: payload.ra,
-            password: payload.password,
-          }),
+          body: JSON.stringify({ token: sedData.token }),
         });
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`Login failed: ${res.status} - ${err}`);
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.text();
+          throw new Error(`Token exchange failed: ${tokenRes.status} - ${err}`);
         }
-        result = await res.json();
+
+        result = await tokenRes.json();
         break;
       }
 
@@ -68,38 +105,41 @@ serve(async (req) => {
       }
 
       case "tasks": {
-        const { token, filter, targets } = payload;
+        const { token, filter, targets, roomCode } = payload;
 
-        // Build query params based on filter type
-        const params: Record<string, string | number | boolean> = {
-          limit: 100,
-          offset: 0,
-          with_answer: true,
-          with_apply_moment: true,
-          is_exam: false,
-          is_essay: false,
-        };
-
-        if (filter === "expired") {
-          params.expired_only = true;
-          params.filter_expired = false;
-        } else {
-          params.expired_only = false;
-          params.filter_expired = true;
+        // Get room detail for category groups (like Taskitos)
+        let categoryTargets: string[] = [];
+        if (roomCode) {
+          try {
+            const detailRes = await fetch(
+              `${EDUSP_API}/room/detail/${roomCode}?fields[]=id&fields[]=name&with_category_groups=true`,
+              { method: "GET", headers: eduspHeaders(token) }
+            );
+            if (detailRes.ok) {
+              const detailData = await detailRes.json();
+              if (detailData.group_categories) {
+                categoryTargets = detailData.group_categories.map((c: any) => c.id);
+              }
+            }
+          } catch (e) {
+            console.log("[tasks] Failed to get room detail:", e);
+          }
         }
 
-        const paramsString = Object.entries(params)
-          .map(([k, v]) => `${k}=${v}`)
-          .join("&");
+        const isExpired = filter === "expired";
+        let url = `${EDUSP_API}/tms/task/todo?expired_only=${isExpired}&limit=100&offset=0&filter_expired=${!isExpired}&is_exam=false&with_answer=true&is_essay=false`;
 
-        const statusParams = `answer_statuses=${encodeURIComponent("pending")}&answer_statuses=${encodeURIComponent("draft")}`;
-        const targetParams = (targets || [])
-          .map((t: string) => `publication_target=${encodeURIComponent(t)}`)
-          .join("&");
+        // Add publication targets
+        for (const t of (targets || [])) {
+          url += `&publication_target=${encodeURIComponent(t)}`;
+        }
+        for (const ct of categoryTargets) {
+          url += `&publication_target=${encodeURIComponent(ct)}`;
+        }
 
-        const url = `/tms/task/todo?${paramsString}&${targetParams}&${statusParams}`;
+        url += "&answer_statuses=draft&answer_statuses=pending&with_apply_moment=true";
 
-        const res = await fetch(`${EDUSP_API}${url}`, {
+        const res = await fetch(url, {
           method: "GET",
           headers: eduspHeaders(token),
         });
@@ -113,102 +153,79 @@ serve(async (req) => {
       }
 
       case "complete": {
-        const rawTask = payload.taskData;
-        const taskId = rawTask.id;
+        const { taskData, token, roomCode, isDraft, minTime, maxTime, score } = payload;
+        const taskId = taskData.id;
 
-        // Build Catalyst payload matching Eclipse Lunar format
-        const taskForCatalyst = {
-          ...rawTask,
-          score: payload.score || 100,
-          is_prova: false,
-          task_id: taskId,
+        console.log(`[complete] task_id=${taskId}, room=${roomCode}, draft=${isDraft}`);
+
+        // Step 1: Get lesson info via /apply (like Taskitos)
+        const applyRes = await fetch(
+          `${EDUSP_API}/tms/task/${taskId}/apply/?preview_mode=false&room_code=${roomCode}`,
+          {
+            method: "GET",
+            headers: eduspHeaders(token),
+          }
+        );
+
+        if (!applyRes.ok) {
+          const err = await applyRes.text();
+          throw new Error(`Apply failed: ${applyRes.status} - ${err}`);
+        }
+
+        const lessonInfo = await applyRes.json();
+
+        // Skip essays and exams
+        if (lessonInfo.is_essay) {
+          console.log(`[complete] Skipping essay: ${taskId}`);
+          result = { success: true, skipped: true, reason: "essay", _taskId: taskId };
+          break;
+        }
+        if (lessonInfo.is_exam) {
+          console.log(`[complete] Skipping exam: ${taskId}`);
+          result = { success: true, skipped: true, reason: "exam", _taskId: taskId };
+          break;
+        }
+
+        // Calculate time spent
+        const timeMin = minTime || 1;
+        const timeMax = maxTime || 3;
+        const timeSpent = Math.round((timeMin + Math.random() * (timeMax - timeMin)) * 60);
+
+        // Step 2: Send to Taskitos /api/complete
+        const completePayload = {
+          x_auth_key: token,
+          room_code: roomCode,
+          lesson_id: taskId,
+          draft: isDraft || false,
+          lesson_info: lessonInfo,
+          time_spent: timeSpent,
+          answer_id: taskData.answer_id || 0,
+          target_score: score || 100,
         };
-        delete taskForCatalyst.id;
 
-        const catalystPayload = {
-          tasks: [taskForCatalyst],
-          auth_token: payload.token,
-          publication_targets: [],
-          room_name_for_apply: rawTask.publication_target || payload.room || "",
-          time_min: payload.minTime || 1,
-          time_max: payload.maxTime || 3,
-          is_draft: payload.isDraft || false,
-          salvar_rascunho: payload.isDraft || false,
-          user_nick: payload.userNick || "",
-        };
+        console.log(`[complete] Sending to Taskitos: lesson_id=${taskId}, time=${timeSpent}s, score=${score}`);
 
-        console.log(`[complete] task_id=${taskId}, room=${catalystPayload.room_name_for_apply}, draft=${catalystPayload.is_draft}`);
-        console.log(`[complete] Full payload: ${JSON.stringify(catalystPayload).substring(0, 1000)}`);
-
-        const res = await fetch(`${CATALYST_API}/complete`, {
+        const completeRes = await fetch(`${TASKITOS_API}/api/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(catalystPayload),
+          body: JSON.stringify(completePayload),
         });
 
-        const responseText = await res.text();
-        console.log(`[complete] Catalyst response: status=${res.status}, body=${responseText.substring(0, 1000)}`);
+        const responseText = await completeRes.text();
+        console.log(`[complete] Taskitos response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
 
         let responseData;
         try {
           responseData = JSON.parse(responseText);
         } catch {
-          throw new Error(`Catalyst response not JSON: ${res.status} - ${responseText}`);
+          throw new Error(`Taskitos response not JSON: ${completeRes.status} - ${responseText}`);
         }
 
-        if (!res.ok && !responseData?.success) {
-          throw new Error(`Catalyst submit failed: ${res.status} - ${responseText}`);
-        }
-
-        // If Catalyst returns a job_id, poll for completion
-        const jobId = responseData?.job_id || responseData?.jobId;
-        if (jobId) {
-          console.log(`[complete] Job ${jobId} submitted, polling for status...`);
-          let jobResult = null;
-          for (let i = 0; i < 20; i++) {
-            await new Promise(r => setTimeout(r, 3000));
-            const jobRes = await fetch(`${CATALYST_API}/job/${jobId}`, {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-            });
-            const jobText = await jobRes.text();
-            console.log(`[complete] Poll ${i + 1}: ${jobText.substring(0, 500)}`);
-            try {
-              jobResult = JSON.parse(jobText);
-            } catch {
-              continue;
-            }
-            const status = jobResult?.status || jobResult?.state;
-            if (status === "completed" || status === "done" || status === "finished" || status === "success") {
-              console.log(`[complete] Job ${jobId} completed successfully`);
-              result = { success: true, ...jobResult, _taskId: taskId };
-              break;
-            }
-            if (status === "failed" || status === "error") {
-              throw new Error(`Job ${jobId} failed: ${JSON.stringify(jobResult)}`);
-            }
-          }
-          if (!result) {
-            // If polling exhausted, return last known state
-            console.log(`[complete] Job ${jobId} polling timeout, last state: ${JSON.stringify(jobResult)}`);
-            result = { success: true, ...jobResult, _taskId: taskId };
-          }
+        if (responseData.status === "success") {
+          result = { success: true, ...responseData, _taskId: taskId };
         } else {
-          result = { ...responseData, _taskId: taskId };
+          result = { success: false, ...responseData, _taskId: taskId };
         }
-        break;
-      }
-
-      case "status": {
-        const res = await fetch(`${CATALYST_API}/job/${payload.jobId}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`Job status failed: ${res.status} - ${err}`);
-        }
-        result = await res.json();
         break;
       }
 
