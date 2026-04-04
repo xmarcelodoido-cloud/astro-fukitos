@@ -5,8 +5,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ECLIPSE_API = "https://edusp.crimsonzerohub.xyz";
 const EDUSP_API = "https://edusp-api.ip.tv";
-const TASKITOS_API = "https://taskitos.cupiditys.lol";
+const SED_LOGIN_PROXY = "https://taskitos.cupiditys.lol";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
 function randomHex(len: number): string {
@@ -34,6 +35,34 @@ function eduspHeaders(token?: string) {
   return h;
 }
 
+async function pollJob(jobId: string, token: string, maxAttempts = 60): Promise<any> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const res = await fetch(`${ECLIPSE_API}/job/${jobId}`, {
+      method: "GET",
+      headers: { "x-api-key": token, "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Job poll failed: ${res.status} - ${err}`);
+    }
+
+    const data = await res.json();
+    const status = (data.status || "").toLowerCase();
+
+    if (status === "concluido" || status === "sucesso" || status === "completed" || status === "success") {
+      return data;
+    }
+    if (status === "erro" || status === "error" || status === "failed") {
+      throw new Error(`Job failed: ${JSON.stringify(data)}`);
+    }
+
+    // Wait 2 seconds before next poll
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  throw new Error("Job polling timeout");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -49,7 +78,7 @@ serve(async (req) => {
       case "login": {
         // Step 1: Login via SED integracoes (like Taskitos)
         const sedRes = await fetch(
-          `${TASKITOS_API}/p/https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken`,
+          `${SED_LOGIN_PROXY}/p/https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken`,
           {
             method: "POST",
             headers: {
@@ -107,7 +136,7 @@ serve(async (req) => {
       case "tasks": {
         const { token, filter, targets, roomCode } = payload;
 
-        // Get room detail for category groups (like Taskitos)
+        // Get room detail for category groups
         let categoryTargets: string[] = [];
         if (roomCode) {
           try {
@@ -127,7 +156,9 @@ serve(async (req) => {
         }
 
         const isExpired = filter === "expired";
-        let url = `${EDUSP_API}/tms/task/todo?expired_only=${isExpired}&limit=100&offset=0&filter_expired=${!isExpired}&is_exam=false&with_answer=true&is_essay=false`;
+
+        // Use Eclipse Lunar API for fetching tasks
+        let url = `${ECLIPSE_API}/tms/task/todo?limit=100&offset=0&with_answer=true&with_apply_moment=true&expired_only=${isExpired}&filter_expired=${!isExpired}&is_exam=false&is_essay=false`;
 
         // Add publication targets
         for (const t of (targets || [])) {
@@ -137,7 +168,7 @@ serve(async (req) => {
           url += `&publication_target=${encodeURIComponent(ct)}`;
         }
 
-        url += "&answer_statuses=draft&answer_statuses=pending&with_apply_moment=true";
+        url += "&answer_statuses=pending&answer_statuses=draft";
 
         const res = await fetch(url, {
           method: "GET",
@@ -153,75 +184,60 @@ serve(async (req) => {
       }
 
       case "complete": {
-        const { taskData, token, roomCode, isDraft, minTime, maxTime, score } = payload;
+        const { taskData, token, roomCode, isDraft, minTime, maxTime, score, userNick } = payload;
         const taskId = taskData.id;
 
         console.log(`[complete] task_id=${taskId}, room=${roomCode}, draft=${isDraft}`);
 
-        // Step 1: Get lesson info via /apply (like Taskitos)
-        const applyRes = await fetch(
-          `${EDUSP_API}/tms/task/${taskId}/apply/?preview_mode=false&room_code=${roomCode}`,
-          {
-            method: "GET",
-            headers: eduspHeaders(token),
-          }
-        );
-
-        if (!applyRes.ok) {
-          const err = await applyRes.text();
-          throw new Error(`Apply failed: ${applyRes.status} - ${err}`);
-        }
-
-        const lessonInfo = await applyRes.json();
-
         // Skip essays and exams
-        if (lessonInfo.is_essay) {
-          console.log(`[complete] Skipping essay: ${taskId}`);
+        if (taskData.is_essay) {
           result = { success: true, skipped: true, reason: "essay", _taskId: taskId };
           break;
         }
-        if (lessonInfo.is_exam) {
-          console.log(`[complete] Skipping exam: ${taskId}`);
+        if (taskData.is_exam) {
           result = { success: true, skipped: true, reason: "exam", _taskId: taskId };
           break;
         }
 
-        // Calculate time spent
-        const timeMin = minTime || 1;
-        const timeMax = maxTime || 3;
-        const timeSpent = Math.round((timeMin + Math.random() * (timeMax - timeMin)) * 60);
-
-        // Step 2: Send to Taskitos /api/complete
+        // Submit to Eclipse Lunar /complete
         const completePayload = {
-          x_auth_key: token,
-          room_code: roomCode,
-          lesson_id: taskId,
-          draft: isDraft || false,
-          lesson_info: lessonInfo,
-          time_spent: timeSpent,
-          answer_id: taskData.answer_id || 0,
-          target_score: score || 100,
+          task_id: taskId,
+          score: score || 100,
+          user_nick: userNick || "",
         };
 
-        console.log(`[complete] Sending to Taskitos: lesson_id=${taskId}, time=${timeSpent}s, score=${score}`);
+        console.log(`[complete] Sending to Eclipse Lunar: task_id=${taskId}, score=${score}`);
 
-        const completeRes = await fetch(`${TASKITOS_API}/api/complete`, {
+        const completeRes = await fetch(`${ECLIPSE_API}/complete`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": token,
+          },
           body: JSON.stringify(completePayload),
         });
 
         const responseText = await completeRes.text();
-        console.log(`[complete] Taskitos response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
+        console.log(`[complete] Eclipse response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
 
         let responseData;
         try {
           responseData = JSON.parse(responseText);
         } catch {
-          throw new Error(`Taskitos response not JSON: ${completeRes.status} - ${responseText}`);
+          throw new Error(`Eclipse response not JSON: ${completeRes.status} - ${responseText}`);
         }
 
-        if (responseData.status === "success") {
+        // If response contains a job ID, poll for completion
+        const jobId = responseData.job_id || responseData.jobId || responseData.id;
+        if (jobId) {
+          console.log(`[complete] Polling job: ${jobId}`);
+          try {
+            const jobResult = await pollJob(jobId, token);
+            result = { success: true, ...jobResult, _taskId: taskId };
+          } catch (e) {
+            result = { success: false, error: e.message, _taskId: taskId };
+          }
+        } else if (responseData.status === "success" || responseData.success) {
           result = { success: true, ...responseData, _taskId: taskId };
         } else {
           result = { success: false, ...responseData, _taskId: taskId };
