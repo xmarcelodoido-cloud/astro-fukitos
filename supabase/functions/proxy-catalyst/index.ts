@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const ECLIPSE_API = "https://edusp.crimsonzerohub.xyz";
-const EDUSP_API = "https://edusp-api.ip.tv";
+const CATALYST_API = "https://catalyst.crimsonzerohub.xyz";
 const SED_LOGIN_PROXY = "https://taskitos.cupiditys.lol";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
@@ -35,32 +35,83 @@ function eduspHeaders(token?: string) {
   return h;
 }
 
-async function pollJob(jobId: string, token: string, maxAttempts = 60): Promise<any> {
+function parseEstimatedMinutes(message: string | undefined): number {
+  if (!message) return 2;
+  const m = message.match(/~?\s*(\d+)\s*min/i);
+  if (m) return Math.max(1, parseInt(m[1]));
+  const s = message.match(/~?\s*(\d+)\s*s(?:ec)?/i);
+  if (s) return Math.max(1, Math.ceil(parseInt(s[1]) / 60));
+  return 2;
+}
+
+async function pollJob(jobId: string, token: string, taskId: string, isExpired: boolean, targets: string[], maxAttempts = 90): Promise<any> {
   for (let i = 0; i < maxAttempts; i++) {
-    const res = await fetch(`${ECLIPSE_API}/job/${jobId}`, {
-      method: "GET",
-      headers: { "x-api-key": token, "Content-Type": "application/json" },
-    });
+    try {
+      const res = await fetch(`${ECLIPSE_API}/job/${jobId}`, {
+        method: "GET",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "x-api-key": token,
+          "x-api-realm": "edusp",
+          "x-api-platform": "webclient",
+          "origin": "https://saladofuturo.educacao.sp.gov.br",
+          "referer": "https://saladofuturo.educacao.sp.gov.br/",
+        },
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Job poll failed: ${res.status} - ${err}`);
+      if (!res.ok) {
+        const err = await res.text();
+        console.warn(`[pollJob] HTTP ${res.status}: ${err}`);
+        await new Promise(r => setTimeout(r, 5000));
+        continue;
+      }
+
+      const data = await res.json();
+      const status = (data.status || "").toLowerCase();
+
+      if (status === "erro" || status === "error" || status === "failed") {
+        throw new Error(`Job failed: ${data.message || JSON.stringify(data)}`);
+      }
+
+      if (status === "concluido" || status === "completed" || status === "success") {
+        // Verify task status on EDUSP
+        const verified = await verifyTaskCompletion(token, taskId, isExpired, targets);
+        return { ...data, verified, _taskId: taskId };
+      }
+
+      // status === 'pendente' — still processing
+      console.log(`[pollJob] Job ${jobId} pending, waiting...`);
+    } catch (err) {
+      console.warn(`[pollJob] Error polling job ${jobId}:`, err);
     }
 
-    const data = await res.json();
-    const status = (data.status || "").toLowerCase();
-
-    if (status === "concluido" || status === "sucesso" || status === "completed" || status === "success") {
-      return data;
-    }
-    if (status === "erro" || status === "error" || status === "failed") {
-      throw new Error(`Job failed: ${JSON.stringify(data)}`);
-    }
-
-    // Wait 2 seconds before next poll
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 5000));
   }
   throw new Error("Job polling timeout");
+}
+
+async function verifyTaskCompletion(token: string, taskId: string, isExpired: boolean, targets: string[]): Promise<boolean> {
+  try {
+    const tStr = targets.map(t => `publication_target=${encodeURIComponent(t)}`).join("&");
+    const url = `${ECLIPSE_API}/tms/task/todo?limit=100&offset=0&with_answer=true&with_apply_moment=true&expired_only=${isExpired}&filter_expired=${!isExpired}&is_exam=false&is_essay=false&${tStr}`;
+    
+    const res = await fetch(url, { method: "GET", headers: eduspHeaders(token) });
+    if (!res.ok) return false;
+    
+    const items = await res.json();
+    const arr = Array.isArray(items) ? items : [];
+    const found = arr.find((t: any) => String(t.id) === String(taskId));
+    
+    // For pending: task disappeared = delivered successfully
+    if (!isExpired && !found) return true;
+    // For expired: has draft = saved
+    if (isExpired && found && (found.answer_status === "draft" || found.answer_id)) return true;
+    
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -76,7 +127,6 @@ serve(async (req) => {
 
     switch (action) {
       case "login": {
-        // Step 1: Login via SED integracoes (like Taskitos)
         const sedRes = await fetch(
           `${SED_LOGIN_PROXY}/p/https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken`,
           {
@@ -87,10 +137,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
               "ocp-apim-subscription-key": "d701a2043aa24d7ebb37e9adf60d043b",
             },
-            body: JSON.stringify({
-              user: payload.ra,
-              senha: payload.password,
-            }),
+            body: JSON.stringify({ user: payload.ra, senha: payload.password }),
           }
         );
 
@@ -104,8 +151,7 @@ serve(async (req) => {
 
         const sedData = await sedRes.json();
 
-        // Step 2: Exchange token via edusp
-        const tokenRes = await fetch(`${EDUSP_API}/registration/edusp/token`, {
+        const tokenRes = await fetch(`${ECLIPSE_API}/registration/edusp/token`, {
           method: "POST",
           headers: eduspHeaders(),
           body: JSON.stringify({ token: sedData.token }),
@@ -122,7 +168,7 @@ serve(async (req) => {
 
       case "rooms": {
         const res = await fetch(
-          `${EDUSP_API}/room/user?list_all=true&with_cards=true`,
+          `${ECLIPSE_API}/room/user?list_all=true&with_cards=true`,
           { method: "GET", headers: eduspHeaders(payload.token) }
         );
         if (!res.ok) {
@@ -141,7 +187,7 @@ serve(async (req) => {
         if (roomCode) {
           try {
             const detailRes = await fetch(
-              `${EDUSP_API}/room/detail/${roomCode}?fields[]=id&fields[]=name&with_category_groups=true`,
+              `${ECLIPSE_API}/room/detail/${roomCode}?fields[]=id&fields[]=name&with_category_groups=true`,
               { method: "GET", headers: eduspHeaders(token) }
             );
             if (detailRes.ok) {
@@ -156,11 +202,8 @@ serve(async (req) => {
         }
 
         const isExpired = filter === "expired";
-
-        // Use Eclipse Lunar API for fetching tasks
         let url = `${ECLIPSE_API}/tms/task/todo?limit=100&offset=0&with_answer=true&with_apply_moment=true&expired_only=${isExpired}&filter_expired=${!isExpired}&is_exam=false&is_essay=false`;
 
-        // Add publication targets
         for (const t of (targets || [])) {
           url += `&publication_target=${encodeURIComponent(t)}`;
         }
@@ -184,10 +227,10 @@ serve(async (req) => {
       }
 
       case "complete": {
-        const { taskData, token, roomCode, isDraft, minTime, maxTime, score, userNick } = payload;
+        const { taskData, token, isDraft, minTime, maxTime, userNick, targets, isExpired } = payload;
         const taskId = taskData.id;
 
-        console.log(`[complete] task_id=${taskId}, room=${roomCode}, draft=${isDraft}`);
+        console.log(`[complete] task_id=${taskId}, draft=${isDraft}`);
 
         // Skip essays and exams
         if (taskData.is_essay) {
@@ -199,46 +242,60 @@ serve(async (req) => {
           break;
         }
 
-        // Submit to Eclipse Lunar /complete
+        // Build Catalyst payload (matching Eclipse Lunar format)
+        const taskPayload = { ...taskData, score: 100, is_prova: false, task_id: taskId };
+        delete taskPayload.id;
+
         const completePayload = {
-          task_id: taskId,
-          score: score || 100,
+          tasks: [taskPayload],
+          auth_token: token,
+          publication_targets: targets || [],
+          room_name_for_apply: taskData.room || taskData.publication_target || "",
+          time_min: minTime || 1,
+          time_max: maxTime || 3,
+          is_draft: isDraft || false,
+          salvar_rascunho: isDraft || false,
           user_nick: userNick || "",
         };
 
-        console.log(`[complete] Sending to Eclipse Lunar: task_id=${taskId}, score=${score}`);
+        console.log(`[complete] Sending to Catalyst: task_id=${taskId}`);
 
-        const completeRes = await fetch(`${ECLIPSE_API}/complete`, {
+        const completeRes = await fetch(`${CATALYST_API}/complete`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": token,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(completePayload),
         });
 
         const responseText = await completeRes.text();
-        console.log(`[complete] Eclipse response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
+        console.log(`[complete] Catalyst response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
 
         let responseData;
         try {
           responseData = JSON.parse(responseText);
         } catch {
-          throw new Error(`Eclipse response not JSON: ${completeRes.status} - ${responseText}`);
+          throw new Error(`Catalyst response not JSON: ${completeRes.status} - ${responseText}`);
         }
 
-        // If response contains a job ID, poll for completion
-        const jobId = responseData.job_id || responseData.jobId || responseData.id;
-        if (jobId) {
-          console.log(`[complete] Polling job: ${jobId}`);
-          try {
-            const jobResult = await pollJob(jobId, token);
-            result = { success: true, ...jobResult, _taskId: taskId };
-          } catch (e) {
-            result = { success: false, error: e.message, _taskId: taskId };
+        if (responseData.success) {
+          const jobId = responseData.job_ids?.[String(taskId)] || null;
+          const estimatedMinutes = parseEstimatedMinutes(responseData.message);
+
+          if (jobId) {
+            console.log(`[complete] Got job_id=${jobId}, estimated=${estimatedMinutes}min. Starting poll...`);
+            // Wait estimated time + buffer before polling
+            const waitMs = (estimatedMinutes * 60 + 30) * 1000;
+            await new Promise(r => setTimeout(r, Math.min(waitMs, 300000))); // max 5 min wait
+
+            try {
+              const jobResult = await pollJob(jobId, token, String(taskId), isExpired || false, targets || []);
+              result = { success: true, ...jobResult, _taskId: taskId };
+            } catch (e) {
+              // Poll failed but task may have been submitted
+              result = { success: true, pollFailed: true, error: e.message, _taskId: taskId };
+            }
+          } else {
+            result = { success: true, ...responseData, _taskId: taskId };
           }
-        } else if (responseData.status === "success" || responseData.success) {
-          result = { success: true, ...responseData, _taskId: taskId };
         } else {
           result = { success: false, ...responseData, _taskId: taskId };
         }
