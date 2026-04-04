@@ -13,7 +13,7 @@ export interface Task {
   _rawData?: any;
 }
 
-let sessionData: { token: string; nick: string; roomCode: string } | null = null;
+let sessionData: { token: string; nick: string; roomCode: string; targets: string[] } | null = null;
 
 async function proxyRequest<T = any>(payload: any): Promise<T> {
   const res = await fetch(PROXY_URL, {
@@ -39,11 +39,36 @@ async function proxyRequest<T = any>(payload: any): Promise<T> {
 export async function login(ra: string, senha: string) {
   const data = await proxyRequest<any>({ action: "login", ra, password: senha });
 
-  // Get rooms to determine best roomCode (like Taskitos)
+  // Get rooms to build targets (like Eclipse Lunar)
   const roomsRes = await proxyRequest<any>({ action: "rooms", token: data.auth_token });
   const rooms = roomsRes.rooms || [];
 
-  // Pick best room: prefer rooms with grade patterns, then most operators
+  // Build targets: room names, room:nick, numeric IDs
+  const targetSet = new Set<string>();
+  const nick = data.nick || "";
+
+  rooms.forEach((room: any) => {
+    if (room.name) {
+      targetSet.add(room.name);
+      if (nick) targetSet.add(`${room.name}:${nick}`);
+    }
+    if (room.id) {
+      const id = String(room.id);
+      if (/^\d{3,4}$/.test(id)) targetSet.add(id);
+    }
+  });
+
+  // Extract additional numeric IDs from rooms data
+  const allIdsStr = JSON.stringify(roomsRes);
+  const idMatches = allIdsStr.match(/"id"\s*:\s*(\d{3,4})(?!\d)/g) || [];
+  idMatches.forEach(m => {
+    const match = m.match(/\d+/);
+    if (match) targetSet.add(match[0]);
+  });
+
+  const targets = Array.from(targetSet);
+
+  // Pick best room
   const gradeRooms = rooms.filter((r: any) => r.topic && /[º°ª]/.test(r.topic));
   const candidates = gradeRooms.length ? gradeRooms : rooms;
   const bestRoom = candidates.reduce((best: any, r: any) => {
@@ -54,7 +79,7 @@ export async function login(ra: string, senha: string) {
 
   const roomCode = bestRoom?.name || "";
 
-  sessionData = { token: data.auth_token, nick: data.nick, roomCode };
+  sessionData = { token: data.auth_token, nick: data.nick, roomCode, targets };
   return { ...data, roomCode };
 }
 
@@ -65,13 +90,16 @@ export async function fetchUserTasks(
   nick: string,
   filter: string
 ): Promise<Task[]> {
-  const roomsRes = await proxyRequest<any>({ action: "rooms", token });
-
-  if (!roomsRes.rooms || roomsRes.rooms.length === 0) {
-    throw new Error("Nenhuma sala encontrada");
+  // Use stored targets or fetch rooms again
+  let targets = sessionData?.targets || [];
+  if (!targets.length) {
+    const roomsRes = await proxyRequest<any>({ action: "rooms", token });
+    if (!roomsRes.rooms || roomsRes.rooms.length === 0) {
+      throw new Error("Nenhuma sala encontrada");
+    }
+    targets = [...new Set(roomsRes.rooms.map((r: any) => r.name))] as string[];
   }
 
-  const targets = [...new Set(roomsRes.rooms.map((r: any) => r.name))] as string[];
   const roomCode = sessionData?.roomCode || targets[0] || "";
 
   const tasksRes = await proxyRequest<any[]>({
@@ -137,11 +165,12 @@ export async function processTasks(
         taskData: task._rawData || task,
         score: task.score || 100,
         token: task.token,
-        roomCode: task.roomCode,
         isDraft,
         minTime,
         maxTime,
         userNick: sessionData?.nick || "",
+        targets: sessionData?.targets || [],
+        isExpired: task.type === "expired",
       };
 
       const result = await proxyRequest<any>(payload);
