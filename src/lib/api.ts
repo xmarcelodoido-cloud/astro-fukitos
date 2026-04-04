@@ -141,6 +141,7 @@ export async function processTasks(
         isDraft,
         minTime,
         maxTime,
+        userNick: sessionData?.nick || "",
       };
 
       const result = await proxyRequest<any>(payload);
