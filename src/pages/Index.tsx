@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Shield, LogOut } from "lucide-react";
-import logo from "@/assets/astrokitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
@@ -224,13 +223,6 @@ const Index = () => {
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <motion.img
-            src={logo}
-            alt="Logo Astrokitos"
-            className="w-16 h-auto mb-3"
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          />
           <h1 className="text-4xl font-bold italic text-gradient tracking-wide" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>Astrokitos</h1>
         </motion.div>
 
@@ -265,7 +257,7 @@ const Index = () => {
         <div className="mt-6 flex flex-col items-center text-center">
           <span className="text-foreground text-sm mb-2">Entre no nosso servidor do Discord</span>
           <motion.a
-            href="https://discord.gg/yNYSzNTz"
+            href="https://discord.gg/wc4TUHG7"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}
