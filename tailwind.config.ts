@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         poppins: ["Poppins", "sans-serif"],
+        bricolage: ["Bricolage Grotesque", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
