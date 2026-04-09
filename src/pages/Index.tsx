@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Shield, LogOut } from "lucide-react";
-import logo from "@/assets/astrokitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
