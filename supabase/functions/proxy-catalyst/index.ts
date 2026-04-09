@@ -47,16 +47,11 @@ function parseEstimatedMinutes(message: string | undefined): number {
 async function pollJob(jobId: string, token: string, taskId: string, isExpired: boolean, targets: string[], maxAttempts = 90): Promise<any> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const res = await fetch(`${ECLIPSE_API}/job/${jobId}`, {
+      const res = await fetch(`${CATALYST_API}/job/${jobId}`, {
         method: "GET",
         headers: {
           "accept": "application/json",
           "content-type": "application/json",
-          "x-api-key": token,
-          "x-api-realm": "edusp",
-          "x-api-platform": "webclient",
-          "origin": "https://saladofuturo.educacao.sp.gov.br",
-          "referer": "https://saladofuturo.educacao.sp.gov.br/",
         },
       });
 
