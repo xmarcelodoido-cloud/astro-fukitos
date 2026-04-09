@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Shield, LogOut } from "lucide-react";
-import logo from "@/assets/fukitos-logo.png";
+import logo from "@/assets/astrokitos-logo.png";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
@@ -226,12 +226,12 @@ const Index = () => {
         >
           <motion.img
             src={logo}
-            alt="Logo FUKITOS"
+            alt="Logo Astrokitos"
             className="w-16 h-auto mb-3"
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           />
-          <h1 className="text-4xl font-bold italic text-gradient tracking-wide">Fukitos</h1>
+          <h1 className="text-4xl font-bold italic text-gradient tracking-wide" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>Astrokitos</h1>
         </motion.div>
 
         <p className="text-muted-foreground text-center mb-6 uppercase tracking-[0.25em] text-xs">
