@@ -122,42 +122,26 @@ serve(async (req) => {
 
     switch (action) {
       case "login": {
-        const sedRes = await fetch(
-          `${SED_LOGIN_PROXY}/p/https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken`,
-          {
-            method: "POST",
-            headers: {
-              "Accept": "*/*",
-              "Accept-Language": "pt-BR,pt;q=0.5",
-              "Content-Type": "application/json",
-              "ocp-apim-subscription-key": "d701a2043aa24d7ebb37e9adf60d043b",
-            },
-            body: JSON.stringify({ user: payload.ra, senha: payload.password }),
-          }
-        );
-
-        if (!sedRes.ok) {
-          const err = await sedRes.text();
-          if (err.toLowerCase().includes("invalid") || err.toLowerCase().includes("incorretos")) {
-            throw new Error("RA ou senha inválidos");
-          }
-          throw new Error(`Login failed: ${sedRes.status} - ${err}`);
-        }
-
-        const sedData = await sedRes.json();
-
-        const tokenRes = await fetch(`${ECLIPSE_API}/registration/edusp/token`, {
+        const loginRes = await fetch(`${ECLIPSE_API}/registration/edusp`, {
           method: "POST",
-          headers: eduspHeaders(),
-          body: JSON.stringify({ token: sedData.token }),
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+          },
+          body: JSON.stringify({
+            realm: "edusp",
+            platform: "webclient",
+            id: payload.ra,
+            password: payload.password,
+          }),
         });
 
-        if (!tokenRes.ok) {
-          const err = await tokenRes.text();
-          throw new Error(`Token exchange failed: ${tokenRes.status} - ${err}`);
+        if (!loginRes.ok) {
+          const err = await loginRes.text();
+          throw new Error("RA ou senha inválidos");
         }
 
-        result = await tokenRes.json();
+        result = await loginRes.json();
         break;
       }
 
