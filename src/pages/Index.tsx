@@ -31,7 +31,7 @@ const Index = () => {
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
   
   // Pass user info to anti-inspect hook for logging
-  useAntiInspect({ ra: currentRa, studentName: userName || undefined });
+  const { showWarning, isBanned, dismissWarning, adminUnban } = useAntiInspect({ ra: currentRa, studentName: userName || undefined });
 
   const handleLogoutAdmin = () => {
     localStorage.removeItem("fukitos_admin_unlocked");
