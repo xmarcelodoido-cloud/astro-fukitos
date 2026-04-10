@@ -166,7 +166,35 @@ const Index = () => {
     }
   };
 
-  // Show banned screen if user is banned
+  // Show device-banned screen (anti-inspect violations)
+  if (isBanned) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 select-none">
+        <div className="text-center max-w-lg">
+          <Ban className="w-24 h-24 text-destructive mx-auto mb-6" />
+          <h1 className="text-4xl md:text-5xl font-extrabold text-destructive mb-4">
+            ACESSO BLOQUEADO
+          </h1>
+          <p className="text-xl text-foreground mb-4 font-semibold">
+            Você foi banido do Astrokitos.
+          </p>
+          <p className="text-muted-foreground mb-2">
+            Suas tentativas de inspecionar o código foram registradas.
+          </p>
+          <p className="text-muted-foreground mb-8">
+            O acesso ao site foi permanentemente revogado para este dispositivo.
+          </p>
+          <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/10 mb-8">
+            <p className="text-sm text-destructive font-medium">
+              ⚠️ Dispositivo identificado e bloqueado. Não tente contornar esta restrição.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show banned screen if user is banned (server-side)
   if (banInfo?.isBanned) {
     return (
       <BannedScreen
