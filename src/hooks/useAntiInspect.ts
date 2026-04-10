@@ -1,5 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
+
+const MAX_VIOLATIONS = 5;
+const BAN_THRESHOLD = 10;
+const BAN_KEY = "astrokitos_banned";
 
 interface UseAntiInspectOptions {
   ra?: string;
@@ -8,80 +12,104 @@ interface UseAntiInspectOptions {
 
 export const useAntiInspect = (options: UseAntiInspectOptions = {}) => {
   const optionsRef = useRef(options);
-  
+  const violationCount = useRef(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [isBanned, setIsBanned] = useState(() => {
+    try {
+      return localStorage.getItem(BAN_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
 
-  useEffect(() => {
-    const logAttempt = (method: string) => {
-      logger.logInspectAttempt(
-        optionsRef.current.ra,
-        optionsRef.current.studentName,
-        method
-      );
-    };
+  const registerViolation = useCallback((method: string) => {
+    logger.logInspectAttempt(
+      optionsRef.current.ra,
+      optionsRef.current.studentName,
+      method
+    );
 
-    // Bloquear botão direito
+    violationCount.current += 1;
+    const count = violationCount.current;
+
+    if (count < MAX_VIOLATIONS) {
+      // Early violations - just log
+    } else if (count === MAX_VIOLATIONS) {
+      setShowWarning(true);
+    } else if (count >= BAN_THRESHOLD) {
+      try {
+        localStorage.setItem(BAN_KEY, "true");
+      } catch { /* ignore */ }
+      setIsBanned(true);
+      setShowWarning(false);
+    }
+  }, []);
+
+  const dismissWarning = useCallback(() => {
+    setShowWarning(false);
+  }, []);
+
+  const adminUnban = useCallback(() => {
+    try {
+      localStorage.removeItem(BAN_KEY);
+    } catch { /* ignore */ }
+    setIsBanned(false);
+    setShowWarning(false);
+    violationCount.current = 0;
+  }, []);
+
+  useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-      logAttempt("context_menu");
+      registerViolation("context_menu");
       return false;
     };
 
-    // Bloquear atalhos de teclado (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
     const handleKeyDown = (e: KeyboardEvent) => {
-      // F12
       if (e.key === "F12") {
         e.preventDefault();
-        logAttempt("F12");
+        registerViolation("F12");
         return false;
       }
-      
-      // Ctrl+Shift+I (DevTools)
       if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) {
         e.preventDefault();
-        logAttempt("Ctrl+Shift+I");
+        registerViolation("Ctrl+Shift+I");
         return false;
       }
-      
-      // Ctrl+Shift+J (Console)
       if (e.ctrlKey && e.shiftKey && (e.key === "J" || e.key === "j")) {
         e.preventDefault();
-        logAttempt("Ctrl+Shift+J");
+        registerViolation("Ctrl+Shift+J");
         return false;
       }
-      
-      // Ctrl+Shift+C (Inspect Element)
       if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
         e.preventDefault();
-        logAttempt("Ctrl+Shift+C");
+        registerViolation("Ctrl+Shift+C");
         return false;
       }
-      
-      // Ctrl+U (View Source)
       if (e.ctrlKey && (e.key === "u" || e.key === "U")) {
         e.preventDefault();
-        logAttempt("Ctrl+U");
+        registerViolation("Ctrl+U");
         return false;
       }
-      
-      // Ctrl+S (Save Page)
       if (e.ctrlKey && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
-        logAttempt("Ctrl+S");
+        registerViolation("Ctrl+S");
         return false;
       }
     };
 
-    // Adicionar listeners
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
 
-    // Cleanup
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [registerViolation]);
+
+  return { showWarning, isBanned, dismissWarning, adminUnban };
 };

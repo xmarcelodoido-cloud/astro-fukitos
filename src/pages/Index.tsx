@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, ShieldAlert, Ban } from "lucide-react";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
@@ -31,7 +31,7 @@ const Index = () => {
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
   
   // Pass user info to anti-inspect hook for logging
-  useAntiInspect({ ra: currentRa, studentName: userName || undefined });
+  const { showWarning, isBanned, dismissWarning, adminUnban } = useAntiInspect({ ra: currentRa, studentName: userName || undefined });
 
   const handleLogoutAdmin = () => {
     localStorage.removeItem("fukitos_admin_unlocked");
@@ -166,7 +166,35 @@ const Index = () => {
     }
   };
 
-  // Show banned screen if user is banned
+  // Show device-banned screen (anti-inspect violations)
+  if (isBanned) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 select-none">
+        <div className="text-center max-w-lg">
+          <Ban className="w-24 h-24 text-destructive mx-auto mb-6" />
+          <h1 className="text-4xl md:text-5xl font-extrabold text-destructive mb-4">
+            ACESSO BLOQUEADO
+          </h1>
+          <p className="text-xl text-foreground mb-4 font-semibold">
+            Você foi banido do Astrokitos.
+          </p>
+          <p className="text-muted-foreground mb-2">
+            Suas tentativas de inspecionar o código foram registradas.
+          </p>
+          <p className="text-muted-foreground mb-8">
+            O acesso ao site foi permanentemente revogado para este dispositivo.
+          </p>
+          <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/10 mb-8">
+            <p className="text-sm text-destructive font-medium">
+              ⚠️ Dispositivo identificado e bloqueado. Não tente contornar esta restrição.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show banned screen if user is banned (server-side)
   if (banInfo?.isBanned) {
     return (
       <BannedScreen
@@ -201,8 +229,39 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <DonationModal />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      {/* Security warning overlay */}
+      {showWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm px-4">
+          <div className="max-w-xl w-full text-center p-8 rounded-2xl border-2 border-destructive/60 bg-destructive/10 backdrop-blur-md">
+            <ShieldAlert className="w-20 h-20 text-destructive mx-auto mb-6" />
+            <h2 className="text-3xl md:text-4xl font-extrabold text-destructive mb-4">
+              ⚠️ AVISO DE SEGURANÇA
+            </h2>
+            <p className="text-lg text-foreground font-semibold mb-4">
+              O Astrokitos é protegido e deve permanecer assim.
+            </p>
+            <p className="text-muted-foreground mb-4">
+              Não tente inspecionar, copiar ou modificar o código-fonte desta plataforma.
+              Todas as tentativas são registradas e monitoradas.
+            </p>
+            <div className="p-4 rounded-lg bg-destructive/20 border border-destructive/40 mb-6">
+              <p className="text-destructive font-bold text-lg">
+                🚫 Não tente isso novamente.
+              </p>
+              <p className="text-destructive/80 text-sm mt-1">
+                Continuar resultará no bloqueio permanente do seu acesso.
+              </p>
+            </div>
+            <button
+              onClick={dismissWarning}
+              className="px-8 py-3 rounded-lg bg-destructive text-foreground font-semibold hover:bg-destructive/80 transition-colors"
+            >
+              Entendi, não farei novamente
+            </button>
+          </div>
+        </div>
+      )}
       <NotificationContainer notifications={notifications} onRemove={removeNotification} />
       <TaskModal
         isOpen={isModalOpen}
