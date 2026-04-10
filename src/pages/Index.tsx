@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, ShieldAlert, Ban } from "lucide-react";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
