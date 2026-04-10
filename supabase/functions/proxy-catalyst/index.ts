@@ -256,25 +256,9 @@ serve(async (req) => {
         }
 
         if (responseData.success) {
-          const jobId = responseData.job_ids?.[String(taskId)] || null;
-          const estimatedMinutes = parseEstimatedMinutes(responseData.message);
-
-          if (jobId) {
-            console.log(`[complete] Got job_id=${jobId}, estimated=${estimatedMinutes}min. Starting poll...`);
-            // Wait estimated time + buffer before polling
-            const waitMs = (estimatedMinutes * 60 + 30) * 1000;
-            await new Promise(r => setTimeout(r, Math.min(waitMs, 300000))); // max 5 min wait
-
-            try {
-              const jobResult = await pollJob(jobId, token, String(taskId), isExpired || false, targets || []);
-              result = { success: true, ...jobResult, _taskId: taskId };
-            } catch (e) {
-              // Poll failed but task may have been submitted
-              result = { success: true, pollFailed: true, error: e.message, _taskId: taskId };
-            }
-          } else {
-            result = { success: true, ...responseData, _taskId: taskId };
-          }
+          // Return immediately - don't wait/poll (causes edge function timeout)
+          // The client treats success from Catalyst as task completed
+          result = { success: true, ...responseData, _taskId: taskId };
         } else {
           result = { success: false, ...responseData, _taskId: taskId };
         }
