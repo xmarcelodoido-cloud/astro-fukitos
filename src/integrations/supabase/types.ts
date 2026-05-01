@@ -47,6 +47,89 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_messages: {
+        Row: {
+          content: string
+          created_at: string
+          hint_level: Database["public"]["Enums"]["ai_hint_level"]
+          id: string
+          role: Database["public"]["Enums"]["ai_message_role"]
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          hint_level?: Database["public"]["Enums"]["ai_hint_level"]
+          id?: string
+          role: Database["public"]["Enums"]["ai_message_role"]
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          hint_level?: Database["public"]["Enums"]["ai_hint_level"]
+          id?: string
+          role?: Database["public"]["Enums"]["ai_message_role"]
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          hint_level: number
+          id: string
+          message_count: number
+          ra: string
+          score: number | null
+          status: Database["public"]["Enums"]["ai_session_status"]
+          student_name: string | null
+          task_content: string | null
+          task_id: string
+          task_title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          hint_level?: number
+          id?: string
+          message_count?: number
+          ra: string
+          score?: number | null
+          status?: Database["public"]["Enums"]["ai_session_status"]
+          student_name?: string | null
+          task_content?: string | null
+          task_id: string
+          task_title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          hint_level?: number
+          id?: string
+          message_count?: number
+          ra?: string
+          score?: number | null
+          status?: Database["public"]["Enums"]["ai_session_status"]
+          student_name?: string | null
+          task_content?: string | null
+          task_id?: string
+          task_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       banned_students: {
         Row: {
           banned_at: string
@@ -206,6 +289,9 @@ export type Database = {
       }
     }
     Enums: {
+      ai_hint_level: "none" | "light" | "medium" | "deep"
+      ai_message_role: "user" | "assistant" | "system"
+      ai_session_status: "active" | "completed" | "abandoned"
       app_role: "admin" | "user"
       log_type:
         | "login"
@@ -341,6 +427,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_hint_level: ["none", "light", "medium", "deep"],
+      ai_message_role: ["user", "assistant", "system"],
+      ai_session_status: ["active", "completed", "abandoned"],
       app_role: ["admin", "user"],
       log_type: [
         "login",
