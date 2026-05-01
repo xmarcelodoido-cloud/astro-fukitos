@@ -11,6 +11,9 @@ const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const ModeSelect = lazy(() => import("./pages/ModeSelect"));
+const ModoIA = lazy(() => import("./pages/ModoIA"));
+const SessaoIA = lazy(() => import("./pages/SessaoIA"));
 
 const queryClient = new QueryClient();
 
@@ -58,7 +61,10 @@ const App = () => {
         <BrowserRouter>
           <Suspense fallback={null}>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<ModeSelect />} />
+              <Route path="/automatico" element={<Index />} />
+              <Route path="/ia" element={<ModoIA />} />
+              <Route path="/ia/sessao/:sessionId" element={<SessaoIA />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
