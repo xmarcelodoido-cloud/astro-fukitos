@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Brain, BookOpen, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Brain, BookOpen, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { login, fetchUserTasks, Task } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { IntroFlow } from "@/components/IntroFlow";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 
 const ModoIA = () => {
   const navigate = useNavigate();
+  const [introDone, setIntroDone] = useState(false);
+  useAntiInspect();
   const [ra, setRa] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
