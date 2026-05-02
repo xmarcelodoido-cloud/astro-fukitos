@@ -1,11 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Brain, ArrowRight, Shield } from "lucide-react";
+import { Zap, Brain, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 
 const ModeSelect = () => {
   const navigate = useNavigate();
   const [adminClicks, setAdminClicks] = useState(0);
+  // Ativa anti-inspect já na tela inicial
+  useAntiInspect();
 
   const handleAdminClick = () => {
     const next = adminClicks + 1;
@@ -20,14 +23,13 @@ const ModeSelect = () => {
       <div className="absolute top-0 left-1/4 w-[28rem] h-[28rem] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[28rem] h-[28rem] rounded-full bg-accent/20 blur-[120px] pointer-events-none" />
 
-      {/* Hidden admin trigger */}
+      {/* Hidden admin trigger - praticamente invisível */}
       <button
         onClick={handleAdminClick}
-        className="absolute top-4 right-4 p-2 opacity-30 hover:opacity-60 transition"
-        aria-label="hidden"
-      >
-        <Shield size={16} className="text-muted-foreground" />
-      </button>
+        className="fixed bottom-1 right-1 w-3 h-3 rounded-full opacity-0 hover:opacity-10 transition z-50 select-none"
+        aria-label=" "
+        tabIndex={-1}
+      />
 
       <div className="relative z-10 container mx-auto px-4 py-12 md:py-20 flex flex-col items-center justify-center min-h-screen">
         <motion.div
@@ -81,8 +83,16 @@ const ModeSelect = () => {
                   <span>Configure nota desejada e tempo</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-1">✓</span>
-                  <span>Ideal para quem tem pressa</span>
+                  <span className="text-yellow-500 mt-1">⚠️</span>
+                  <span className="text-yellow-500/90">
+                    <span className="font-semibold">Aviso:</span> O sistema automático pode ser detectado, então use com sabedoria.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 mt-1">⚠️</span>
+                  <span className="text-yellow-500/90">
+                    <span className="font-semibold">Aviso:</span> Já o caminho fácil nem sempre é o melhor, então é por sua conta e risco.
+                  </span>
                 </li>
               </ul>
 
@@ -128,6 +138,12 @@ const ModeSelect = () => {
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-1">✓</span>
                   <span>Aprenda de verdade, não apenas respostas</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-500 mt-1">⚠️</span>
+                  <span className="text-yellow-500/90">
+                    <span className="font-semibold">Aviso:</span> IAs podem falhar, então revise as respostas antes de terminar o estudo.
+                  </span>
                 </li>
               </ul>
 

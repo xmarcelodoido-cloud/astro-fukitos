@@ -89,8 +89,13 @@ export type Database = {
           hint_level: number
           id: string
           message_count: number
+          min_time_passed: boolean
+          quiz_attempts: number
+          quiz_passed: boolean
           ra: string
+          required_minutes: number
           score: number | null
+          started_at: string
           status: Database["public"]["Enums"]["ai_session_status"]
           student_name: string | null
           task_content: string | null
@@ -104,8 +109,13 @@ export type Database = {
           hint_level?: number
           id?: string
           message_count?: number
+          min_time_passed?: boolean
+          quiz_attempts?: number
+          quiz_passed?: boolean
           ra: string
+          required_minutes?: number
           score?: number | null
+          started_at?: string
           status?: Database["public"]["Enums"]["ai_session_status"]
           student_name?: string | null
           task_content?: string | null
@@ -119,8 +129,13 @@ export type Database = {
           hint_level?: number
           id?: string
           message_count?: number
+          min_time_passed?: boolean
+          quiz_attempts?: number
+          quiz_passed?: boolean
           ra?: string
+          required_minutes?: number
           score?: number | null
+          started_at?: string
           status?: Database["public"]["Enums"]["ai_session_status"]
           student_name?: string | null
           task_content?: string | null

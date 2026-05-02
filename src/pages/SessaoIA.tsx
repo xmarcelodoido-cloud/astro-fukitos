@@ -6,15 +6,29 @@ import {
   ArrowLeft,
   Send,
   Lightbulb,
-  X,
   Loader2,
   Brain,
+  Lock,
+  Unlock,
+  Clock,
+  AlertTriangle,
   CheckCircle2,
+  XCircle,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 
 interface Message {
   id: string;
@@ -30,9 +44,25 @@ interface Session {
   status: string;
   hint_level: number;
   message_count: number;
+  required_minutes: number;
+  started_at: string;
+  quiz_passed: boolean;
+  quiz_attempts: number;
+}
+
+interface QuizQuestion {
+  question: string;
+  options: string[];
+}
+
+interface QuizResult {
+  correct: boolean;
+  correct_index: number;
+  explanation: string;
 }
 
 const SessaoIA = () => {
+  useAntiInspect();
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
@@ -42,6 +72,14 @@ const SessaoIA = () => {
   const [initLoading, setInitLoading] = useState(true);
   const [hintUsed, setHintUsed] = useState(0);
   const [finishing, setFinishing] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<number[]>([-1, -1, -1]);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizResults, setQuizResults] = useState<QuizResult[] | null>(null);
+  const [quizPassed, setQuizPassed] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState(3);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +94,8 @@ const SessaoIA = () => {
         if (error || !s) throw error || new Error("Sessão não encontrada");
         setSession(s as Session);
         setHintUsed(s.hint_level || 0);
+        setQuizPassed(s.quiz_passed || false);
+        setAttemptsLeft(Math.max(0, 3 - (s.quiz_attempts || 0)));
 
         const { data: msgs } = await supabase
           .from("ai_messages")
@@ -63,14 +103,18 @@ const SessaoIA = () => {
           .eq("session_id", sessionId)
           .order("created_at", { ascending: true });
 
-        if (msgs && msgs.length > 0) {
-          setMessages(msgs as Message[]);
+        const visible = (msgs ?? []).filter(
+          (m: any) => !(m.role === "system" && m.content.startsWith("__QUIZ__:"))
+        );
+
+        if (visible.length > 0) {
+          setMessages(visible as Message[]);
         } else {
           setMessages([
             {
               id: "welcome",
               role: "system",
-              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astrokitos. Vou te ajudar a resolver esta atividade fazendo perguntas — você vai aprender de verdade, não apenas receber respostas.\n\n**Atividade:** ${s.task_title}\n\nVamos começar? Qual é a sua primeira ideia para resolver isso?`,
+              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astrokitos. Vou te ajudar a aprender de verdade — com perguntas, dicas e raciocínio guiado.\n\n**Atividade:** ${s.task_title}\n\n⏱️ Você precisa estudar por pelo menos **${s.required_minutes} minutos** antes de poder enviar a tarefa, e antes do envio responderá um **quiz com 3 perguntas** sobre o conteúdo (3 tentativas).\n\nVamos começar? Qual é a sua primeira ideia para resolver isso?`,
             },
           ]);
         }
@@ -81,6 +125,19 @@ const SessaoIA = () => {
       }
     })();
   }, [sessionId]);
+
+  // Cronômetro de tempo mínimo
+  useEffect(() => {
+    if (!session) return;
+    const update = () => {
+      const elapsed = (Date.now() - new Date(session.started_at).getTime()) / 1000;
+      const total = session.required_minutes * 60;
+      setSecondsLeft(Math.max(0, Math.ceil(total - elapsed)));
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [session]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,7 +150,6 @@ const SessaoIA = () => {
     if (!sessionId) return;
     setLoading(true);
 
-    // Optimistic user message
     const userMsg: Message = {
       id: `tmp-${Date.now()}`,
       role: "user",
@@ -141,12 +197,86 @@ const SessaoIA = () => {
       return;
     }
     const map = { 1: "light", 2: "medium", 3: "deep" } as const;
-    const labels = { 1: "leve (conceitual)", 2: "média (exemplo análogo)", 3: "profunda (passo a passo)" };
+    const labels = {
+      1: "leve (conceitual)",
+      2: "média (exemplo análogo)",
+      3: "profunda (passo a passo)",
+    };
     callTutor(`Preciso de uma dica ${labels[level]}.`, map[level]);
+  };
+
+  const openQuiz = async () => {
+    if (!sessionId) return;
+    setQuizOpen(true);
+    if (quizQuestions.length > 0) return; // já gerado
+    setQuizLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-quiz", {
+        body: { sessionId, action: "generate" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setQuizQuestions(data.questions);
+      setQuizAnswers([-1, -1, -1]);
+      setQuizResults(null);
+    } catch (err: any) {
+      toast.error("Erro ao gerar quiz: " + err.message);
+      setQuizOpen(false);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const submitQuiz = async () => {
+    if (!sessionId) return;
+    if (quizAnswers.some((a) => a < 0)) {
+      toast.error("Responda todas as perguntas");
+      return;
+    }
+    setQuizLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-quiz", {
+        body: { sessionId, action: "validate", answers: quizAnswers },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setQuizResults(data.results);
+      setAttemptsLeft(data.attempts_left);
+      if (data.passed) {
+        setQuizPassed(true);
+        toast.success("🎉 Você acertou! Envio liberado.");
+      } else if (data.attempts_left > 0) {
+        toast.error(
+          `Algumas respostas estão erradas. Você ainda tem ${data.attempts_left} tentativa(s).`
+        );
+      } else {
+        toast.error("Tentativas esgotadas. A tarefa precisa ser feita por completo.");
+      }
+    } catch (err: any) {
+      toast.error("Erro ao validar quiz: " + err.message);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const retryQuiz = () => {
+    setQuizAnswers([-1, -1, -1]);
+    setQuizResults(null);
   };
 
   const handleFinish = async () => {
     if (!sessionId) return;
+    if (secondsLeft > 0) {
+      toast.error(
+        `Aguarde mais ${formatTime(secondsLeft)} antes de enviar a tarefa.`
+      );
+      return;
+    }
+    if (!quizPassed) {
+      toast.error("Você precisa passar no quiz antes de enviar.");
+      openQuiz();
+      return;
+    }
     setFinishing(true);
     try {
       const score = Math.max(40, 100 - hintUsed * 15);
@@ -156,6 +286,7 @@ const SessaoIA = () => {
           status: "completed",
           score,
           completed_at: new Date().toISOString(),
+          min_time_passed: true,
         })
         .eq("id", sessionId);
       toast.success(`Sessão concluída! Pontuação: ${score}`);
@@ -186,6 +317,8 @@ const SessaoIA = () => {
     );
   }
 
+  const canSubmit = secondsLeft === 0 && quizPassed;
+
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
@@ -198,6 +331,7 @@ const SessaoIA = () => {
             size="icon"
             onClick={() => navigate("/ia")}
             className="text-muted-foreground hover:text-foreground"
+            title="Voltar"
           >
             <ArrowLeft size={18} />
           </Button>
@@ -205,20 +339,52 @@ const SessaoIA = () => {
             <h1 className="text-base md:text-lg font-bold font-bricolage truncate text-gradient">
               {session.task_title}
             </h1>
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-              <Brain size={12} /> Tutora de IA · {session.message_count || 0} mensagens
+            <p className="text-xs text-muted-foreground flex items-center justify-center gap-3 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Brain size={12} /> {session.message_count || 0} msgs
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock size={12} />
+                {secondsLeft > 0 ? (
+                  <span className="text-yellow-500">{formatTime(secondsLeft)}</span>
+                ) : (
+                  <span className="text-green-500">Tempo OK</span>
+                )}
+              </span>
+              <span className="flex items-center gap-1">
+                {quizPassed ? (
+                  <>
+                    <Unlock size={12} className="text-green-500" />
+                    <span className="text-green-500">Quiz OK</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={12} className="text-yellow-500" />
+                    <span className="text-yellow-500">Bloqueado</span>
+                  </>
+                )}
+              </span>
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleFinish}
-            disabled={finishing}
-            className="text-accent hover:text-accent"
-            title="Finalizar sessão"
+            onClick={() => navigate("/")}
+            className="text-muted-foreground hover:text-foreground"
+            title="Início"
           >
-            {finishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 size={18} />}
+            <Home size={18} />
           </Button>
+        </div>
+      </div>
+
+      {/* Aviso de IA */}
+      <div className="relative z-10 container mx-auto max-w-4xl px-4 pt-3">
+        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-xs">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+          <span>
+            <span className="font-semibold">Aviso:</span> IAs podem falhar. Revise as respostas antes de enviar a tarefa na SED.
+          </span>
         </div>
       </div>
 
@@ -287,10 +453,10 @@ const SessaoIA = () => {
         </div>
       </div>
 
-      {/* Hint buttons + input */}
+      {/* Action bar */}
       <div className="relative z-10 border-t border-border bg-card/60 backdrop-blur-sm p-4">
         <div className="container mx-auto max-w-4xl space-y-3">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             {[1, 2, 3].map((lvl) => (
               <Button
                 key={lvl}
@@ -305,6 +471,56 @@ const SessaoIA = () => {
                 {lvl <= hintUsed && " ✓"}
               </Button>
             ))}
+
+            <div className="flex-1" />
+
+            <Button
+              size="sm"
+              variant={quizPassed ? "outline" : "default"}
+              onClick={openQuiz}
+              disabled={attemptsLeft <= 0 && !quizPassed}
+              className={
+                quizPassed
+                  ? "border-green-500/50 text-green-500"
+                  : "bg-accent text-white"
+              }
+            >
+              {quizPassed ? (
+                <>
+                  <CheckCircle2 size={14} className="mr-1" /> Quiz aprovado
+                </>
+              ) : (
+                <>
+                  <Brain size={14} className="mr-1" /> Fazer Quiz ({attemptsLeft} tent.)
+                </>
+              )}
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={handleFinish}
+              disabled={finishing || !canSubmit}
+              className="bg-gradient-brand text-white"
+              title={
+                !canSubmit
+                  ? secondsLeft > 0
+                    ? `Aguarde ${formatTime(secondsLeft)}`
+                    : "Passe no quiz primeiro"
+                  : "Enviar tarefa"
+              }
+            >
+              {finishing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : canSubmit ? (
+                <>
+                  <Unlock size={14} className="mr-1" /> Enviar tarefa
+                </>
+              ) : (
+                <>
+                  <Lock size={14} className="mr-1" /> Bloqueado
+                </>
+              )}
+            </Button>
           </div>
 
           <div className="flex gap-2">
@@ -326,8 +542,135 @@ const SessaoIA = () => {
           </div>
         </div>
       </div>
+
+      {/* Quiz Modal */}
+      <Dialog open={quizOpen} onOpenChange={(o) => !quizLoading && setQuizOpen(o)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-bricolage flex items-center gap-2">
+              <Brain className="text-primary" />
+              Quiz de verificação
+            </DialogTitle>
+            <DialogDescription>
+              Responda as 3 perguntas corretamente para liberar o envio. Você tem{" "}
+              <span className="font-semibold text-yellow-500">{attemptsLeft}</span>{" "}
+              tentativa(s).
+            </DialogDescription>
+          </DialogHeader>
+
+          {quizLoading && quizQuestions.length === 0 ? (
+            <div className="py-8 flex flex-col items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Gerando perguntas com a IA...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {quizQuestions.map((q, qi) => {
+                const result = quizResults?.[qi];
+                return (
+                  <div
+                    key={qi}
+                    className={`p-4 rounded-lg border ${
+                      result
+                        ? result.correct
+                          ? "border-green-500/40 bg-green-500/5"
+                          : "border-destructive/40 bg-destructive/5"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <p className="font-semibold mb-3 text-sm">
+                      {qi + 1}. {q.question}
+                    </p>
+                    <div className="space-y-2">
+                      {q.options.map((opt, oi) => {
+                        const selected = quizAnswers[qi] === oi;
+                        const isCorrect = result && oi === result.correct_index;
+                        const isWrongPick = result && selected && !result.correct;
+                        return (
+                          <button
+                            key={oi}
+                            onClick={() => {
+                              if (quizResults || quizLoading || quizPassed) return;
+                              setQuizAnswers((prev) => {
+                                const next = [...prev];
+                                next[qi] = oi;
+                                return next;
+                              });
+                            }}
+                            disabled={!!quizResults || quizLoading || quizPassed}
+                            className={`w-full text-left p-2.5 rounded-md text-sm border transition ${
+                              isCorrect
+                                ? "border-green-500 bg-green-500/10 text-green-500"
+                                : isWrongPick
+                                ? "border-destructive bg-destructive/10 text-destructive"
+                                : selected
+                                ? "border-primary bg-primary/10"
+                                : "border-border hover:border-primary/40"
+                            }`}
+                          >
+                            <span className="font-mono mr-2">
+                              {String.fromCharCode(65 + oi)}.
+                            </span>
+                            {opt}
+                            {isCorrect && (
+                              <CheckCircle2 size={14} className="inline ml-2" />
+                            )}
+                            {isWrongPick && (
+                              <XCircle size={14} className="inline ml-2" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {result && (
+                      <p className="mt-2 text-xs text-muted-foreground italic">
+                        {result.explanation}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            {!quizResults && (
+              <Button
+                onClick={submitQuiz}
+                disabled={
+                  quizLoading ||
+                  quizQuestions.length === 0 ||
+                  quizAnswers.some((a) => a < 0)
+                }
+                className="bg-gradient-brand text-white"
+              >
+                {quizLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : null}
+                Enviar respostas
+              </Button>
+            )}
+            {quizResults && !quizPassed && attemptsLeft > 0 && (
+              <Button onClick={retryQuiz} variant="outline">
+                Tentar novamente ({attemptsLeft})
+              </Button>
+            )}
+            {(quizPassed || (quizResults && attemptsLeft <= 0)) && (
+              <Button onClick={() => setQuizOpen(false)} variant="outline">
+                Fechar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+};
+
+const formatTime = (s: number) => {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
 export default SessaoIA;
