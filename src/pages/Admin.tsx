@@ -66,6 +66,7 @@ interface StudentWarning {
 }
 
 export default function Admin() {
+  useAntiInspect();
   const { user, isAdmin, isLoading, signOut } = useAdminAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
