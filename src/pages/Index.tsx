@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut, ShieldAlert, Ban } from "lucide-react";
+import { Shield, LogOut, ShieldAlert, Ban, Home } from "lucide-react";
+import { IntroFlow } from "@/components/IntroFlow";
 import { LoginForm } from "@/components/LoginForm";
 import { TaskModal } from "@/components/TaskModal";
 import { DonationModal } from "@/components/DonationModal";
@@ -26,7 +27,8 @@ const Index = () => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentRa, setCurrentRa] = useState<string>("");
   const [adminClickCount, setAdminClickCount] = useState(0);
-  
+  const [introDone, setIntroDone] = useState(false);
+
   const { banInfo, checkBan, clearBanInfo } = useBanCheck();
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
   
@@ -230,6 +232,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      {!introDone && (
+        <IntroFlow storageKey="astrokitos_intro_automatico" onDone={() => setIntroDone(true)} />
+      )}
+
+      {/* Botão voltar para tela inicial */}
+      <button
+        onClick={() => navigate("/")}
+        className="fixed top-4 left-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg bg-card/70 border border-border backdrop-blur-sm text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors text-xs font-medium"
+        aria-label="Voltar"
+      >
+        <Home className="w-4 h-4" />
+        <span className="hidden sm:inline">Início</span>
+      </button>
+
       {/* Security warning overlay */}
       {showWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm px-4">
