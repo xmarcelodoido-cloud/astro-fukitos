@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
