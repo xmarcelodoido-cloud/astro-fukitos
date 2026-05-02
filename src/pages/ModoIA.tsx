@@ -52,6 +52,8 @@ const ModoIA = () => {
     setStarting(task.id);
     try {
       const taskContent = JSON.stringify(task._rawData?.questions || task._rawData || {}, null, 2).slice(0, 4000);
+      // Tempo mínimo aleatório entre 5 e 9 minutos
+      const requiredMinutes = 5 + Math.floor(Math.random() * 5);
       const { data, error } = await supabase
         .from("ai_sessions")
         .insert({
@@ -60,6 +62,8 @@ const ModoIA = () => {
           task_id: String(task.id),
           task_title: task.title,
           task_content: taskContent,
+          required_minutes: requiredMinutes,
+          started_at: new Date().toISOString(),
         })
         .select("id")
         .single();
@@ -76,8 +80,20 @@ const ModoIA = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
+      {!introDone && (
+        <IntroFlow storageKey="astrokitos_intro_ia" onDone={() => setIntroDone(true)} />
+      )}
       <div className="absolute top-0 left-1/3 w-96 h-96 rounded-full bg-primary/15 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-1/3 w-96 h-96 rounded-full bg-accent/15 blur-[120px] pointer-events-none" />
+
+      <div className="relative z-10 container mx-auto px-4 pt-4 max-w-4xl">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-xs md:text-sm">
+          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>
+            <span className="font-semibold">Aviso:</span> IAs podem falhar. Sempre revise as respostas antes de terminar o estudo.
+          </span>
+        </div>
+      </div>
 
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
