@@ -91,8 +91,7 @@ export const IntroFlow = ({ storageKey, onDone }: IntroFlowProps) => {
               <p className="w-full mb-4 text-xs text-justify text-muted-foreground leading-relaxed">
                 Ao clicar em <span className="text-primary font-semibold">Aceitar</span>, você
                 concorda com nossos termos de uso e regras. O uso da plataforma é
-                de sua inteira responsabilidade. O Astrokitos não se responsabiliza
-                por sanções aplicadas pela SEDUC ou pela escola.
+                de sua inteira responsabilidade.
                 <br />
                 <a className="mt-2 inline-block text-primary underline underline-offset-2 cursor-pointer hover:text-accent">
                   Saiba mais
