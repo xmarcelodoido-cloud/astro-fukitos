@@ -40,7 +40,7 @@ export const IntroFlow = ({ storageKey, onDone }: IntroFlowProps) => {
           sessionStorage.setItem(storageKey, "ok");
         } catch { /* ignore */ }
         setPhase("done");
-      }, 1700);
+      }, 5000);
       return () => clearTimeout(t);
     }
   }, [phase, onDone, storageKey]);
