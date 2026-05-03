@@ -51,7 +51,14 @@ const ModoIA = () => {
   const handleStart = async (task: Task) => {
     setStarting(task.id);
     try {
-      const taskContent = JSON.stringify(task._rawData?.questions || task._rawData || {}, null, 2).slice(0, 4000);
+      // Extrai as questões "como estão" da Sala do Futuro
+      const raw = task._rawData || {};
+      const questions = raw.questions || raw.task?.questions || [];
+      const taskContent = JSON.stringify(
+        { title: task.title, room: task.room, questions },
+        null,
+        2,
+      ).slice(0, 14000);
       // Tempo mínimo aleatório entre 5 e 9 minutos
       const requiredMinutes = 5 + Math.floor(Math.random() * 5);
       const { data, error } = await supabase
