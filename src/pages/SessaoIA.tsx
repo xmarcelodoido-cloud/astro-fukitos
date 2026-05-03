@@ -114,9 +114,15 @@ const SessaoIA = () => {
             {
               id: "welcome",
               role: "system",
-              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astrokitos. Vou te ajudar a aprender de verdade — com perguntas, dicas e raciocínio guiado.\n\n**Atividade:** ${s.task_title}\n\n⏱️ Você precisa estudar por pelo menos **${s.required_minutes} minutos** antes de poder enviar a tarefa, e antes do envio responderá um **quiz com 3 perguntas** sobre o conteúdo (3 tentativas).\n\nVamos começar? Qual é a sua primeira ideia para resolver isso?`,
+              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astrokitos.\n\n**Atividade:** ${s.task_title}\n\n⏱️ Você precisa estudar por pelo menos **${s.required_minutes} minutos** antes de poder enviar a tarefa, e antes do envio responderá um **quiz com 3 perguntas** sobre o conteúdo (3 tentativas).\n\nVou te mostrar agora as questões da Sala do Futuro exatamente como elas estão...`,
             },
           ]);
+          // Dispara mensagem inicial pra IA listar as questões originais
+          setTimeout(() => {
+            callTutor(
+              "Iniciar sessão: por favor, mostre todas as questões desta atividade exatamente como elas estão na Sala do Futuro (enunciado + alternativas), numeradas, e depois pergunte por qual quero começar.",
+            );
+          }, 400);
         }
       } catch (err: any) {
         toast.error(err.message || "Erro ao carregar sessão");
