@@ -91,7 +91,7 @@ const ModeSelect = () => {
                 <li className="flex items-start gap-2">
                   <span className="text-yellow-500 mt-1">⚠️</span>
                   <span className="text-yellow-500/90">
-                    <span className="font-semibold">Aviso:</span> Já o caminho fácil nem sempre é o melhor, então é por sua conta e risco.
+                    <span className="font-semibold">Aviso:</span> O caminho mais fácil nem sempre é o melhor, o uso do sistema é escolha sua.
                   </span>
                 </li>
               </ul>
