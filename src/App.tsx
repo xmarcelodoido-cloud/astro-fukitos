@@ -1,11 +1,13 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { MaintenanceMode } from "@/components/MaintenanceMode";
-import { MAINTENANCE_CONFIG } from "@/config/maintenance";
+import { SecurityShield } from "@/components/SecurityShield";
+import { EntryDonationModal } from "@/components/EntryDonationModal";
+import { useMaintenanceSetting } from "@/hooks/useMaintenanceSetting";
 
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -17,9 +19,10 @@ const SessaoIA = lazy(() => import("./pages/SessaoIA"));
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  // Importante: ler o localStorage de forma síncrona no primeiro render,
-  // para evitar qualquer "flash" do app principal.
+const AppShell = () => {
+  const location = useLocation();
+  const { state: maintenance, loading } = useMaintenanceSetting();
+
   const [isUnlocked, setIsUnlocked] = useState(() => {
     try {
       return localStorage.getItem("fukitos_admin_unlocked") === "true";
@@ -28,53 +31,56 @@ const App = () => {
     }
   });
 
-  const isMaintenanceActive = useMemo(
-    () => Boolean(MAINTENANCE_CONFIG.MAINTENANCE_MODE),
-    []
-  );
-
   useEffect(() => {
-    // Verificar se o admin já desbloqueou
     try {
       const unlocked = localStorage.getItem("fukitos_admin_unlocked");
       setIsUnlocked(unlocked === "true");
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, []);
 
-  // Se modo de manutenção está ativo e usuário não é admin
-  if (isMaintenanceActive && !isUnlocked) {
+  // Permite acesso ao admin mesmo em manutenção
+  const isAdminRoute =
+    location.pathname.startsWith("/admin");
+
+  if (loading) return null;
+
+  if (maintenance?.active && !isUnlocked && !isAdminRoute) {
     return (
       <MaintenanceMode
         onUnlock={() => setIsUnlocked(true)}
-        expectedReturn={MAINTENANCE_CONFIG.EXPECTED_RETURN}
+        expectedReturn={maintenance.expected_return}
       />
     );
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<ModeSelect />} />
-              <Route path="/automatico" element={<Index />} />
-              <Route path="/ia" element={<ModoIA />} />
-              <Route path="/ia/sessao/:sessionId" element={<SessaoIA />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin-login" element={<AdminLogin />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <Suspense fallback={null}>
+      <EntryDonationModal />
+      <Routes>
+        <Route path="/" element={<ModeSelect />} />
+        <Route path="/automatico" element={<Index />} />
+        <Route path="/ia" element={<ModoIA />} />
+        <Route path="/ia/sessao/:sessionId" element={<SessaoIA />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <SecurityShield>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </SecurityShield>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
