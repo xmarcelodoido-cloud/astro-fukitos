@@ -16,7 +16,7 @@ export const useMaintenanceSetting = () => {
       .select("value")
       .eq("key", "maintenance")
       .maybeSingle();
-    const v = (data?.value as MaintenanceState | undefined) ?? {
+    const v = (data?.value as unknown as MaintenanceState | undefined) ?? {
       active: false,
       expected_return: "Prazo indeterminado",
     };
