@@ -37,6 +37,8 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Wrench } from "lucide-react";
 
 interface ActivityLog {
   id: string;
@@ -100,6 +102,11 @@ export default function Admin() {
   // Details modal state
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+
+  // Maintenance toggle state
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
+  const [maintenanceReturn, setMaintenanceReturn] = useState("Prazo indeterminado");
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
 
   useEffect(() => {
     if (!isLoading && (!user || !isAdmin)) {
