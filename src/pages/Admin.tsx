@@ -117,6 +117,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       fetchData();
+      fetchMaintenance();
     }
   }, [isAdmin]);
 
@@ -124,6 +125,35 @@ export default function Admin() {
     setIsLoadingData(true);
     await Promise.all([fetchLogs(), fetchBannedStudents(), fetchWarnings()]);
     setIsLoadingData(false);
+  };
+
+  const fetchMaintenance = async () => {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "maintenance")
+      .maybeSingle();
+    const v = (data?.value as { active?: boolean; expected_return?: string }) || {};
+    setMaintenanceActive(!!v.active);
+    setMaintenanceReturn(v.expected_return || "Prazo indeterminado");
+  };
+
+  const saveMaintenance = async (next: { active: boolean; expected_return: string }) => {
+    setMaintenanceSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "maintenance", value: next, updated_by: user?.id ?? null });
+    setMaintenanceSaving(false);
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível salvar", variant: "destructive" });
+      return;
+    }
+    setMaintenanceActive(next.active);
+    setMaintenanceReturn(next.expected_return);
+    toast({
+      title: next.active ? "Modo manutenção ativado" : "Modo manutenção desativado",
+      description: next.active ? "O site está fechado para usuários comuns." : "O site está aberto novamente.",
+    });
   };
 
   const fetchLogs = async () => {
