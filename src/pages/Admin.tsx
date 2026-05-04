@@ -37,6 +37,8 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Wrench } from "lucide-react";
 
 interface ActivityLog {
   id: string;
@@ -101,6 +103,11 @@ export default function Admin() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
 
+  // Maintenance toggle state
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
+  const [maintenanceReturn, setMaintenanceReturn] = useState("Prazo indeterminado");
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+
   useEffect(() => {
     if (!isLoading && (!user || !isAdmin)) {
       navigate("/admin-login");
@@ -110,6 +117,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) {
       fetchData();
+      fetchMaintenance();
     }
   }, [isAdmin]);
 
@@ -117,6 +125,35 @@ export default function Admin() {
     setIsLoadingData(true);
     await Promise.all([fetchLogs(), fetchBannedStudents(), fetchWarnings()]);
     setIsLoadingData(false);
+  };
+
+  const fetchMaintenance = async () => {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "maintenance")
+      .maybeSingle();
+    const v = (data?.value as { active?: boolean; expected_return?: string }) || {};
+    setMaintenanceActive(!!v.active);
+    setMaintenanceReturn(v.expected_return || "Prazo indeterminado");
+  };
+
+  const saveMaintenance = async (next: { active: boolean; expected_return: string }) => {
+    setMaintenanceSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "maintenance", value: next, updated_by: user?.id ?? null });
+    setMaintenanceSaving(false);
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível salvar", variant: "destructive" });
+      return;
+    }
+    setMaintenanceActive(next.active);
+    setMaintenanceReturn(next.expected_return);
+    toast({
+      title: next.active ? "Modo manutenção ativado" : "Modo manutenção desativado",
+      description: next.active ? "O site está fechado para usuários comuns." : "O site está aberto novamente.",
+    });
   };
 
   const fetchLogs = async () => {
@@ -418,6 +455,43 @@ export default function Admin() {
               {logs.filter((l) => l.log_type === "inspect_attempt").length}
             </p>
             <p className="text-sm text-muted-foreground">Inspeções</p>
+          </div>
+        </div>
+
+        {/* Maintenance toggle */}
+        <div className="bg-secondary/30 border border-border rounded-xl p-4 mb-8 flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+            <Wrench className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">Modo manutenção</p>
+              <p className="text-xs text-muted-foreground">
+                Quando ativo, apenas administradores conseguem acessar o site.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Input
+              value={maintenanceReturn}
+              onChange={(e) => setMaintenanceReturn(e.target.value)}
+              placeholder="Previsão de retorno"
+              className="w-56"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={maintenanceSaving}
+              onClick={() => saveMaintenance({ active: maintenanceActive, expected_return: maintenanceReturn })}
+            >
+              Salvar texto
+            </Button>
+            <Switch
+              checked={maintenanceActive}
+              disabled={maintenanceSaving}
+              onCheckedChange={(v) => saveMaintenance({ active: v, expected_return: maintenanceReturn })}
+            />
+            <span className={`text-xs font-semibold ${maintenanceActive ? "text-red-500" : "text-green-500"}`}>
+              {maintenanceActive ? "ATIVO" : "INATIVO"}
+            </span>
           </div>
         </div>
 
