@@ -29,6 +29,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+import { IntroFlow } from "@/components/IntroFlow";
 
 interface Message {
   id: string;
@@ -63,6 +64,7 @@ interface QuizResult {
 
 const SessaoIA = () => {
   useAntiInspect();
+  const [introDone, setIntroDone] = useState(false);
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
@@ -327,6 +329,9 @@ const SessaoIA = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {!introDone && (
+        <IntroFlow storageKey="astrokitos_intro_sessao" onDone={() => setIntroDone(true)} />
+      )}
       <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-primary/10 blur-[120px] pointer-events-none" />
 
       {/* Header */}
