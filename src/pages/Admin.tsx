@@ -458,6 +458,43 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* Maintenance toggle */}
+        <div className="bg-secondary/30 border border-border rounded-xl p-4 mb-8 flex items-start gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+            <Wrench className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-semibold text-sm">Modo manutenção</p>
+              <p className="text-xs text-muted-foreground">
+                Quando ativo, apenas administradores conseguem acessar o site.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Input
+              value={maintenanceReturn}
+              onChange={(e) => setMaintenanceReturn(e.target.value)}
+              placeholder="Previsão de retorno"
+              className="w-56"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={maintenanceSaving}
+              onClick={() => saveMaintenance({ active: maintenanceActive, expected_return: maintenanceReturn })}
+            >
+              Salvar texto
+            </Button>
+            <Switch
+              checked={maintenanceActive}
+              disabled={maintenanceSaving}
+              onCheckedChange={(v) => saveMaintenance({ active: v, expected_return: maintenanceReturn })}
+            />
+            <span className={`text-xs font-semibold ${maintenanceActive ? "text-red-500" : "text-green-500"}`}>
+              {maintenanceActive ? "ATIVO" : "INATIVO"}
+            </span>
+          </div>
+        </div>
+
         {/* Tabs */}
         <Tabs defaultValue="logs" className="w-full">
           <TabsList className="mb-4">
