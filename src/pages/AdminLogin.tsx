@@ -7,10 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useAntiInspect } from "@/hooks/useAntiInspect";
+
+const REQUIRED_2FA_CODE = "não tem codigo";
 
 export default function AdminLogin() {
+  useAntiInspect();
+  const [step, setStep] = useState<"creds" | "code">("creds");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAdminAuth();
