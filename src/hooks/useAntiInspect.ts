@@ -63,52 +63,10 @@ export const useAntiInspect = (options: UseAntiInspectOptions = {}) => {
   }, []);
 
   useEffect(() => {
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      registerViolation("context_menu");
-      return false;
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "F12") {
-        e.preventDefault();
-        registerViolation("F12");
-        return false;
-      }
-      if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) {
-        e.preventDefault();
-        registerViolation("Ctrl+Shift+I");
-        return false;
-      }
-      if (e.ctrlKey && e.shiftKey && (e.key === "J" || e.key === "j")) {
-        e.preventDefault();
-        registerViolation("Ctrl+Shift+J");
-        return false;
-      }
-      if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
-        e.preventDefault();
-        registerViolation("Ctrl+Shift+C");
-        return false;
-      }
-      if (e.ctrlKey && (e.key === "u" || e.key === "U")) {
-        e.preventDefault();
-        registerViolation("Ctrl+U");
-        return false;
-      }
-      if (e.ctrlKey && (e.key === "s" || e.key === "S")) {
-        e.preventDefault();
-        registerViolation("Ctrl+S");
-        return false;
-      }
-    };
-
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
+    // Proteções anti-inspect desativadas a pedido do administrador.
+    // const handleContextMenu = (e: MouseEvent) => { ... };
+    // const handleKeyDown = (e: KeyboardEvent) => { ... };
+    return () => {};
   }, [registerViolation]);
 
   return { showWarning, isBanned, dismissWarning, adminUnban };
