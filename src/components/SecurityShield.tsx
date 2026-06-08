@@ -3,8 +3,9 @@ import { logger } from "@/lib/logger";
 
 const BAN_KEY = "astrokitos_banned";
 const ATTEMPTS_KEY = "astrokitos_devtools_attempts";
-const MAX_ATTEMPTS = 10;
+const MAX_ATTEMPTS = 5;
 const SIZE_THRESHOLD = 160;
+const BLUR_CLASS = "astrokitos-devtools-blur";
 
 /**
  * Shield global de segurança:
