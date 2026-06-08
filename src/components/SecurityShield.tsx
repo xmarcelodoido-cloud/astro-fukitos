@@ -25,6 +25,18 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (banned) return;
+    // Inject CSS once: blur + scramble content when DevTools is detected.
+    const styleId = "astrokitos-devtools-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        html.${BLUR_CLASS} body { filter: blur(14px) saturate(0.3) !important; pointer-events: none !important; user-select: none !important; }
+        html.${BLUR_CLASS} body * { text-shadow: 0 0 12px currentColor !important; }
+      `;
+      document.head.appendChild(style);
+    }
+
 
     let devtoolsOpen = false;
     let attempts = 0;
@@ -87,6 +99,7 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("resize", check);
+      document.documentElement.classList.remove(BLUR_CLASS);
     };
   }, [banned]);
 
