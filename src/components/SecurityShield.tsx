@@ -3,8 +3,9 @@ import { logger } from "@/lib/logger";
 
 const BAN_KEY = "astrokitos_banned";
 const ATTEMPTS_KEY = "astrokitos_devtools_attempts";
-const MAX_ATTEMPTS = 10;
+const MAX_ATTEMPTS = 5;
 const SIZE_THRESHOLD = 160;
+const BLUR_CLASS = "astrokitos-devtools-blur";
 
 /**
  * Shield global de segurança:
@@ -24,6 +25,18 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (banned) return;
+    // Inject CSS once: blur + scramble content when DevTools is detected.
+    const styleId = "astrokitos-devtools-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        html.${BLUR_CLASS} body { filter: blur(14px) saturate(0.3) !important; pointer-events: none !important; user-select: none !important; }
+        html.${BLUR_CLASS} body * { text-shadow: 0 0 12px currentColor !important; }
+      `;
+      document.head.appendChild(style);
+    }
+
 
     let devtoolsOpen = false;
     let attempts = 0;
@@ -54,10 +67,12 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
       if (isOpen && !devtoolsOpen) {
         devtoolsOpen = true;
         setBlocked(true);
+        document.documentElement.classList.add(BLUR_CLASS);
         registerAttempt();
       } else if (!isOpen && devtoolsOpen) {
         devtoolsOpen = false;
         setBlocked(false);
+        document.documentElement.classList.remove(BLUR_CLASS);
       }
     };
 
@@ -71,6 +86,7 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
         if (!devtoolsOpen) {
           devtoolsOpen = true;
           setBlocked(true);
+          document.documentElement.classList.add(BLUR_CLASS);
           registerAttempt();
         }
       }
@@ -86,6 +102,7 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("resize", check);
+      document.documentElement.classList.remove(BLUR_CLASS);
     };
   }, [banned]);
 
