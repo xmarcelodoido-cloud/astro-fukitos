@@ -86,6 +86,7 @@ export const SecurityShield = ({ children }: { children: ReactNode }) => {
         if (!devtoolsOpen) {
           devtoolsOpen = true;
           setBlocked(true);
+          document.documentElement.classList.add(BLUR_CLASS);
           registerAttempt();
         }
       }
