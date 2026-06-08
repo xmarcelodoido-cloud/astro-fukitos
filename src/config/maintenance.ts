@@ -3,7 +3,7 @@
 
 export const MAINTENANCE_CONFIG = {
   // Ativar modo de manutenção (true = ativado, false = desativado)
-  MAINTENANCE_MODE: false,
+  MAINTENANCE_MODE: true,
   
   // Previsão de retorno (data e hora)
   EXPECTED_RETURN: "Prazo indeterminado",
