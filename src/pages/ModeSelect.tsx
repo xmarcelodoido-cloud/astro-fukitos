@@ -169,10 +169,13 @@ const ModeSelect = () => {
           {[
             { label: "Plataformas", value: `${platforms.length}` },
             {
-              label: "Disponíveis",
-              value: `${platforms.filter((p) => p.available).length}`,
+              label: "Ativas",
+              value: `${platforms.filter((p) => p.badge !== "Em breve").length}`,
             },
-            { label: "Em breve", value: `${platforms.filter((p) => !p.available).length}` },
+            {
+              label: "Em breve",
+              value: `${platforms.filter((p) => p.badge === "Em breve").length}`,
+            },
           ].map((s) => (
             <div
               key={s.label}
