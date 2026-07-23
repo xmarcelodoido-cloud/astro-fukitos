@@ -1,13 +1,81 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Brain, ArrowRight } from "lucide-react";
+import {
+  Zap,
+  Brain,
+  BookOpen,
+  PenSquare,
+  Calculator,
+  Sparkles,
+  ArrowRight,
+  Heart,
+  ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+
+type Platform = {
+  name: string;
+  description: string;
+  icon: typeof Zap;
+  href?: string;
+  available: boolean;
+  accent: "primary" | "accent";
+  badge?: string;
+};
+
+const platforms: Platform[] = [
+  {
+    name: "TarefaSP",
+    description: "Resolve automaticamente as tarefas da Sala do Futuro",
+    icon: Zap,
+    href: "/automatico",
+    available: true,
+    accent: "primary",
+    badge: "Rápido",
+  },
+  {
+    name: "Tutor IA",
+    description: "Estude com uma IA que te explica cada questão passo a passo",
+    icon: Brain,
+    href: "/ia",
+    available: true,
+    accent: "accent",
+    badge: "Educativo",
+  },
+  {
+    name: "LeiaSP",
+    description: "Leituras e atividades resolvidas em segundos",
+    icon: BookOpen,
+    available: false,
+    accent: "primary",
+  },
+  {
+    name: "Redação",
+    description: "Gera e envia redações como rascunho na Sala do Futuro",
+    icon: PenSquare,
+    available: false,
+    accent: "accent",
+  },
+  {
+    name: "Matific",
+    description: "Resolve as atividades de matemática do Matific",
+    icon: Calculator,
+    available: false,
+    accent: "primary",
+  },
+  {
+    name: "Khan Academy",
+    description: "Em breve — resolução automática Khan",
+    icon: Sparkles,
+    available: false,
+    accent: "accent",
+  },
+];
 
 const ModeSelect = () => {
   const navigate = useNavigate();
   const [adminClicks, setAdminClicks] = useState(0);
-  // Ativa anti-inspect já na tela inicial
   useAntiInspect();
 
   const handleAdminClick = () => {
@@ -23,7 +91,7 @@ const ModeSelect = () => {
       <div className="absolute top-0 left-1/4 w-[28rem] h-[28rem] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[28rem] h-[28rem] rounded-full bg-accent/20 blur-[120px] pointer-events-none" />
 
-      {/* Hidden admin trigger - praticamente invisível */}
+      {/* Hidden admin trigger */}
       <button
         onClick={handleAdminClick}
         className="fixed bottom-1 right-1 w-3 h-3 rounded-full opacity-0 hover:opacity-10 transition z-50 select-none"
@@ -31,132 +99,165 @@ const ModeSelect = () => {
         tabIndex={-1}
       />
 
-      <div className="relative z-10 container mx-auto px-4 py-12 md:py-20 flex flex-col items-center justify-center min-h-screen">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+      <div className="relative z-10 container mx-auto px-4 py-10 md:py-14 max-w-6xl">
+        {/* Header */}
+        <motion.header
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12 md:mb-16 max-w-3xl"
+          transition={{ duration: 0.5 }}
+          className="flex items-center justify-between mb-8"
         >
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 font-bricolage">
-            <span className="text-gradient">Astrokitos</span>
-          </h1>
-          <p className="text-lg md:text-2xl text-muted-foreground mb-2">
-            Sua plataforma de estudos inteligente
-          </p>
-          <p className="text-sm md:text-base text-muted-foreground/80">
-            Escolha como deseja resolver suas atividades hoje
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 w-full max-w-5xl">
-          {/* Modo Automático */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            whileHover={{ scale: 1.02, y: -4 }}
-            onClick={() => navigate("/automatico")}
-            className="group cursor-pointer relative"
-          >
-            <div className="absolute inset-0 bg-gradient-brand rounded-2xl blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
-            <div className="relative bg-card border border-border rounded-2xl p-8 md:p-10 h-full flex flex-col justify-between hover:border-primary/60 transition-all duration-300 card-shadow">
-              <div className="mb-6">
-                <div className="w-16 h-16 rounded-xl bg-gradient-brand flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 glow-primary">
-                  <Zap className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 font-bricolage">
-                  Modo Automático
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Completa suas atividades automaticamente
-                </p>
-              </div>
-
-              <ul className="space-y-3 text-sm text-muted-foreground mb-6">
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-1">✓</span>
-                  <span>Processa múltiplas atividades de uma vez</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-primary mt-1">✓</span>
-                  <span>Configure nota desejada e tempo</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-500 mt-1">⚠️</span>
-                  <span className="text-yellow-500/90">
-                    <span className="font-semibold">Aviso:</span> O sistema automático pode ser detectado, então use com sabedoria.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-500 mt-1">⚠️</span>
-                  <span className="text-yellow-500/90">
-                    <span className="font-semibold">Aviso:</span> O caminho mais fácil nem sempre é o melhor, o uso do sistema é escolha sua.
-                  </span>
-                </li>
-              </ul>
-
-              <button className="w-full bg-gradient-brand text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition">
-                Começar Automático
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center glow-primary">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-          </motion.div>
-
-          {/* Modo IA Educativo */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            whileHover={{ scale: 1.02, y: -4 }}
-            onClick={() => navigate("/ia")}
-            className="group cursor-pointer relative"
+            <span className="text-2xl font-bold font-bricolage text-gradient">
+              Astrokitos
+            </span>
+          </div>
+          <a
+            href="https://pixgg.com/zenin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition text-sm font-medium"
           >
-            <div className="absolute inset-0 bg-gradient-brand-reverse rounded-2xl blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
-            <div className="relative bg-card border border-border rounded-2xl p-8 md:p-10 h-full flex flex-col justify-between hover:border-accent/60 transition-all duration-300 card-shadow">
-              <div className="mb-6">
-                <div className="w-16 h-16 rounded-xl bg-gradient-brand-reverse flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 glow-primary">
-                  <Brain className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2 font-bricolage">
-                  Modo IA Educativo
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Aprenda com tutoria pedagógica inteligente
-                </p>
-              </div>
+            <Heart className="w-4 h-4" /> Apoiar
+          </a>
+        </motion.header>
 
-              <ul className="space-y-3 text-sm text-muted-foreground mb-6">
-                <li className="flex items-start gap-2">
-                  <span className="text-accent mt-1">✓</span>
-                  <span>IA tutora guia seu raciocínio</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent mt-1">✓</span>
-                  <span>Dicas progressivas em 3 níveis</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent mt-1">✓</span>
-                  <span>Aprenda de verdade, não apenas respostas</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-500 mt-1">⚠️</span>
-                  <span className="text-yellow-500/90">
-                    <span className="font-semibold">Aviso:</span> IAs podem falhar, então revise as respostas antes de terminar o estudo.
-                  </span>
-                </li>
-              </ul>
-
-              <button className="w-full bg-gradient-brand-reverse text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition">
-                Começar com IA
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+        {/* Welcome card */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="relative rounded-3xl border border-border bg-card overflow-hidden mb-6"
+        >
+          <div className="absolute inset-0 bg-gradient-brand opacity-10 pointer-events-none" />
+          <div className="relative p-6 md:p-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold mb-4">
+              <ShieldCheck className="w-3.5 h-3.5" /> Plataforma segura & anônima
             </div>
-          </motion.div>
+            <h1 className="text-3xl md:text-5xl font-bold font-bricolage mb-3">
+              Bem-vindo ao <span className="text-gradient">Astrokitos</span>
+            </h1>
+            <p className="text-muted-foreground max-w-2xl">
+              Escolha uma plataforma abaixo para resolver, estudar ou automatizar suas
+              atividades da Sala do Futuro — tudo em minutos, do seu jeito.
+            </p>
+          </div>
+        </motion.section>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
+          {[
+            { label: "Plataformas", value: `${platforms.length}` },
+            {
+              label: "Disponíveis",
+              value: `${platforms.filter((p) => p.available).length}`,
+            },
+            { label: "Em breve", value: `${platforms.filter((p) => !p.available).length}` },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-border bg-card p-4 md:p-5 text-center"
+            >
+              <div className="text-2xl md:text-3xl font-bold text-gradient font-bricolage">
+                {s.value}
+              </div>
+              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wider mt-1">
+                {s.label}
+              </div>
+            </div>
+          ))}
         </div>
 
+        {/* Platforms */}
+        <section>
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="text-xl md:text-2xl font-bold font-bricolage">
+              Plataformas
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              Toque em uma para começar
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {platforms.map((p, i) => {
+              const Icon = p.icon;
+              const disabled = !p.available;
+              return (
+                <motion.button
+                  key={p.name}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: i * 0.05 }}
+                  whileHover={disabled ? undefined : { y: -3 }}
+                  whileTap={disabled ? undefined : { scale: 0.98 }}
+                  onClick={() => !disabled && p.href && navigate(p.href)}
+                  disabled={disabled}
+                  className={`group relative text-left rounded-2xl border p-5 transition-all overflow-hidden ${
+                    disabled
+                      ? "border-border bg-card/60 cursor-not-allowed opacity-60"
+                      : "border-border bg-card hover:border-primary/60 card-shadow"
+                  }`}
+                >
+                  {!disabled && (
+                    <div
+                      className={`absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ${
+                        p.accent === "primary"
+                          ? "bg-gradient-brand"
+                          : "bg-gradient-brand-reverse"
+                      }`}
+                      style={{ padding: 1, WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude" as any }}
+                    />
+                  )}
+
+                  <div className="relative flex items-start gap-4">
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                        p.accent === "primary"
+                          ? "bg-gradient-brand"
+                          : "bg-gradient-brand-reverse"
+                      } ${disabled ? "grayscale" : "glow-primary"}`}
+                    >
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold font-bricolage text-lg text-foreground truncate">
+                          {p.name}
+                        </h3>
+                        {p.badge && !disabled && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-semibold uppercase tracking-wider">
+                            {p.badge}
+                          </span>
+                        )}
+                        {disabled && (
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                            Em breve
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-snug">
+                        {p.description}
+                      </p>
+                      {!disabled && (
+                        <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:gap-2 transition-all">
+                          Acessar <ArrowRight className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </section>
+
         <p className="text-center text-xs text-muted-foreground/70 mt-10">
-          Ambos os modos usam a mesma autenticação segura da Sala do Futuro
+          Feito com <span className="text-primary">♥</span> por Zenos · Todas as
+          plataformas usam autenticação segura da Sala do Futuro
         </p>
       </div>
     </div>
