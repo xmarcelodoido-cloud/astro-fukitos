@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Heart,
   ShieldCheck,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
