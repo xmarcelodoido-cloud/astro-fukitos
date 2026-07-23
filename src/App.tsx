@@ -16,6 +16,11 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const ModeSelect = lazy(() => import("./pages/ModeSelect"));
 const ModoIA = lazy(() => import("./pages/ModoIA"));
 const SessaoIA = lazy(() => import("./pages/SessaoIA"));
+const LeiaSP = lazy(() => import("./pages/LeiaSP"));
+const Redacao = lazy(() => import("./pages/Redacao"));
+const Matific = lazy(() => import("./pages/Matific"));
+const Khan = lazy(() => import("./pages/Khan"));
+const Perfil = lazy(() => import("./pages/Perfil"));
 
 const queryClient = new QueryClient();
 
@@ -61,6 +66,11 @@ const AppShell = () => {
         <Route path="/automatico" element={<Index />} />
         <Route path="/ia" element={<ModoIA />} />
         <Route path="/ia/sessao/:sessionId" element={<SessaoIA />} />
+        <Route path="/leia" element={<LeiaSP />} />
+        <Route path="/redacao" element={<Redacao />} />
+        <Route path="/matific" element={<Matific />} />
+        <Route path="/khan" element={<Khan />} />
+        <Route path="/perfil" element={<Perfil />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="*" element={<NotFound />} />
