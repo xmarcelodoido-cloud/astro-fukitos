@@ -124,14 +124,22 @@ const ModeSelect = () => {
               Astrokitos
             </span>
           </div>
-          <a
-            href="https://pixgg.com/zenin"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition text-sm font-medium"
-          >
-            <Heart className="w-4 h-4" /> Apoiar
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/perfil")}
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition text-sm font-medium"
+            >
+              <User className="w-4 h-4" /> <span className="hidden sm:inline">Perfil</span>
+            </button>
+            <a
+              href="https://pixgg.com/zenin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition text-sm font-medium"
+            >
+              <Heart className="w-4 h-4" /> <span className="hidden sm:inline">Apoiar</span>
+            </a>
+          </div>
         </motion.header>
 
         {/* Welcome card */}
