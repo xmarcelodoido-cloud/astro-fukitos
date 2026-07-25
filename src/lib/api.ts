@@ -15,6 +15,14 @@ export interface Task {
 
 let sessionData: { token: string; nick: string; roomCode: string; targets: string[] } | null = null;
 
+export function setSessionData(data: { token: string; nick: string; roomCode: string; targets: string[] } | null) {
+  sessionData = data;
+}
+
+export function getSessionData() {
+  return sessionData;
+}
+
 async function proxyRequest<T = any>(payload: any): Promise<T> {
   const res = await fetch(PROXY_URL, {
     method: "POST",

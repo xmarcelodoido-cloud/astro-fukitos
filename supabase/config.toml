@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.ai-quiz]
 verify_jwt = false
+
+[functions.proxy-efekta]
+verify_jwt = false
