@@ -83,10 +83,20 @@ const platforms: Platform[] = [
     accent: "accent",
     badge: "Em breve",
   },
+  {
+    name: "Speak",
+    description: "Auto-completa lições da plataforma Efekta (Speak)",
+    icon: Mic,
+    href: "/speak",
+    available: true,
+    accent: "accent",
+    badge: "Novo",
+  },
 ];
 
 const ModeSelect = () => {
   const navigate = useNavigate();
+  const { session, logout } = useSession();
   const [adminClicks, setAdminClicks] = useState(0);
   useAntiInspect();
 
