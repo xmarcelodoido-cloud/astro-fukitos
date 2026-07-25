@@ -1,378 +1,202 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut, ShieldAlert, Ban, Home } from "lucide-react";
-import { IntroFlow } from "@/components/IntroFlow";
-import { LoginForm } from "@/components/LoginForm";
+import { LogOut, ShieldAlert, Ban, Home, Zap, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TaskModal } from "@/components/TaskModal";
-import { DonationModal } from "@/components/DonationModal";
 import { NotificationContainer, NotificationData } from "@/components/Notification";
 import { BannedScreen } from "@/components/BannedScreen";
 import { WarningScreen } from "@/components/WarningScreen";
-import { SavedAccounts, saveAccount } from "@/components/SavedAccounts";
-import { login, fetchUserTasks, processTasks, Task } from "@/lib/api";
+import { fetchUserTasks, processTasks, Task } from "@/lib/api";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { useBanCheck } from "@/hooks/useBanCheck";
 import { useWarningCheck } from "@/hooks/useWarningCheck";
 import { logger } from "@/lib/logger";
-import { MAINTENANCE_CONFIG } from "@/config/maintenance";
+import { useSession } from "@/contexts/SessionContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { session, logout } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [currentRa, setCurrentRa] = useState<string>("");
-  const [adminClickCount, setAdminClickCount] = useState(0);
-  const [introDone, setIntroDone] = useState(false);
 
   const { banInfo, checkBan, clearBanInfo } = useBanCheck();
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
-  
-  // Pass user info to anti-inspect hook for logging
-  const { showWarning, isBanned, dismissWarning, adminUnban } = useAntiInspect({ ra: currentRa, studentName: userName || undefined });
 
-  const handleLogoutAdmin = () => {
-    localStorage.removeItem("fukitos_admin_unlocked");
-    window.location.reload();
-  };
+  const { showWarning, isBanned, dismissWarning } = useAntiInspect({
+    ra: session?.ra || "",
+    studentName: session?.nick,
+  });
 
-  const addNotification = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
+  const addNotification = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    setNotifications(prev => [...prev, { id, message, type }]);
+    setNotifications((prev) => [...prev, { id, message, type }]);
   }, []);
 
   const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const handleVerify = async (ra: string, password: string): Promise<string | null> => {
-    try {
-      // Check if RA is banned
-      const banStatus = await checkBan(ra);
-      if (banStatus.isBanned) {
-        return null;
-      }
-
-      // Check if RA has unacknowledged warnings
-      await checkWarning(ra);
-
-      addNotification("VERIFICANDO CREDENCIAIS...", "info");
-      const loginData = await login(ra, password);
-      
-      setUserName(loginData.nick);
-      setAuthToken(loginData.auth_token);
-      setCurrentRa(ra);
-      // roomCode is now stored in sessionData inside api.ts
-      
-      // Log the login
-      await logger.logLogin(ra, loginData.nick);
-      
-      // Save account for easy access
-      saveAccount(ra, loginData.nick);
-      
-      addNotification(`BEM-VINDO, ${loginData.nick.toUpperCase()}!`, "success");
-      return loginData.nick;
-    } catch (error) {
-      console.error(error);
-      addNotification("RA OU SENHA INVÁLIDOS", "error");
-      return null;
-    }
-  };
-
-  const handleSelectAccount = (ra: string) => {
-    setCurrentRa(ra);
-  };
-
-  const handleLogout = () => {
-    setUserName(null);
-    setAuthToken(null);
-    setCurrentRa("");
-    addNotification("VOCÊ SAIU DA CONTA", "info");
-  };
-
-  const handleSearchTasks = async (filter: 'pending' | 'expired', _ra: string, _password: string) => {
-    if (isLoading) {
-      addNotification("OPERAÇÃO EM ANDAMENTO", "info");
-      return;
-    }
-
-    if (!authToken || !userName) {
-      addNotification("FAÇA A VERIFICAÇÃO PRIMEIRO", "error");
-      return;
-    }
-
+  const handleSearch = async (filter: "pending" | "expired") => {
+    if (!session) return;
+    if (isLoading) return;
     setIsLoading(true);
-
     try {
+      const ban = await checkBan(session.ra);
+      if (ban.isBanned) return;
+      await checkWarning(session.ra);
       addNotification("BUSCANDO LIÇÕES...", "info");
-      addNotification("SE VOCÊ PAGOU POR ISSO VC FOI SCAMMADO", "info");
-      addNotification("FAÇA SUAS LIÇÕES EM MINUTOS", "info");
-      addNotification("AMO NUGGET", "info");
-
-      const fetchedTasks = await fetchUserTasks(authToken, userName, filter);
-
-      if (fetchedTasks.length > 0) {
-        setTasks(fetchedTasks);
+      const fetched = await fetchUserTasks(session.auth_token, session.nick, filter);
+      if (fetched.length > 0) {
+        setTasks(fetched);
         setIsModalOpen(true);
-        addNotification(`${fetchedTasks.length} LIÇÕES ENCONTRADAS`, "success");
+        addNotification(`${fetched.length} LIÇÕES ENCONTRADAS`, "success");
       } else {
         addNotification("NENHUMA ATIVIDADE ENCONTRADA", "info");
       }
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
       addNotification("ERRO AO BUSCAR ATIVIDADES", "error");
-      await logger.logError(currentRa, userName || undefined, "Erro ao buscar atividades");
+      await logger.logError(session.ra, session.nick, "Erro ao buscar atividades");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStartTasks = async (selectedTasks: Task[], isDraft: boolean, minTime: number, maxTime: number) => {
+  const handleStartTasks = async (selected: Task[], isDraft: boolean, minTime: number, maxTime: number) => {
     setIsModalOpen(false);
-
-    if (selectedTasks.length === 0) {
-      addNotification("NENHUMA ATIVIDADE SELECIONADA", "info");
-      return;
-    }
-
-    addNotification(`${selectedTasks.length} ATIVIDADES ENVIADAS PARA PROCESSAMENTO`, "info");
-
+    if (!session || selected.length === 0) return;
+    addNotification(`${selected.length} ATIVIDADES ENVIADAS`, "info");
     const result = await processTasks(
-      selectedTasks,
+      selected,
       isDraft,
       minTime,
       maxTime,
       async (message, type) => {
         addNotification(message, type);
-        
-        const taskTitle = message.includes("'") ? message.split("'")[1] : "";
-        if (type === "success" && currentRa && userName) {
-          await logger.logTaskCompleted(currentRa, userName, "", taskTitle);
-        } else if (type === "error" && currentRa && userName) {
-          await logger.logTaskFailed(currentRa, userName, "", taskTitle, message);
-        }
+        const title = message.includes("'") ? message.split("'")[1] : "";
+        if (type === "success") await logger.logTaskCompleted(session.ra, session.nick, "", title);
+        else if (type === "error") await logger.logTaskFailed(session.ra, session.nick, "", title, message);
       },
-      currentRa
+      session.ra,
     );
-
-    if (result.success > 0) {
-      addNotification(`${result.success} DE ${selectedTasks.length} ATIVIDADES PROCESSADAS COM SUCESSO`, "success");
-    }
-
-    if (result.error > 0) {
-      addNotification(`${result.error} ATIVIDADES FALHARAM`, "error");
-    }
+    if (result.success > 0) addNotification(`${result.success} SUCESSO`, "success");
+    if (result.error > 0) addNotification(`${result.error} FALHARAM`, "error");
   };
 
-  // Show device-banned screen (anti-inspect violations)
   if (isBanned) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 select-none">
-        <div className="text-center max-w-lg">
-          <Ban className="w-24 h-24 text-destructive mx-auto mb-6" />
-          <h1 className="text-4xl md:text-5xl font-extrabold text-destructive mb-4">
-            ACESSO BLOQUEADO
-          </h1>
-          <p className="text-xl text-foreground mb-4 font-semibold">
-            Você foi banido do Astrokitos.
-          </p>
-          <p className="text-muted-foreground mb-2">
-            Suas tentativas de inspecionar o código foram registradas.
-          </p>
-          <p className="text-muted-foreground mb-8">
-            O acesso ao site foi permanentemente revogado para este dispositivo.
-          </p>
-          <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/10 mb-8">
-            <p className="text-sm text-destructive font-medium">
-              ⚠️ Dispositivo identificado e bloqueado. Não tente contornar esta restrição.
-            </p>
-          </div>
-        </div>
+        <Ban className="w-24 h-24 text-destructive mx-auto mb-6" />
+        <h1 className="text-4xl font-extrabold text-destructive mb-4">ACESSO BLOQUEADO</h1>
+        <p className="text-muted-foreground">Dispositivo bloqueado.</p>
       </div>
     );
   }
 
-  // Show banned screen if user is banned (server-side)
   if (banInfo?.isBanned) {
     return (
       <BannedScreen
-        reason={banInfo.reason || "Violação das regras de uso"}
+        reason={banInfo.reason || "Violação"}
         bannedAt={banInfo.bannedAt}
-        onBack={() => {
-          clearBanInfo();
-          setCurrentRa("");
-        }}
+        onBack={() => { clearBanInfo(); logout(); navigate("/login"); }}
       />
     );
   }
 
-  // Show warning screen if user has unacknowledged warning
   if (warningInfo?.hasWarning && !warningInfo.acknowledged) {
     return (
       <WarningScreen
-        reason={warningInfo.reason || "Comportamento inadequado"}
+        reason={warningInfo.reason || "Aviso"}
         warnedAt={warningInfo.warnedAt}
-        onAcknowledge={async () => {
-          const success = await acknowledgeWarning(warningInfo.id, currentRa);
-          return success;
-        }}
-        onBack={() => {
-          clearWarningInfo();
-          setCurrentRa("");
-          setUserName(null);
-          setAuthToken(null);
-        }}
+        onAcknowledge={async () => await acknowledgeWarning(warningInfo.id, session?.ra || "")}
+        onBack={() => { clearWarningInfo(); logout(); navigate("/login"); }}
       />
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
-      {!introDone && (
-        <IntroFlow storageKey="astrokitos_intro_automatico" onDone={() => setIntroDone(true)} />
-      )}
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="absolute top-0 left-1/4 w-[28rem] h-[28rem] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[28rem] h-[28rem] rounded-full bg-accent/20 blur-[120px] pointer-events-none" />
 
-      {/* Botão voltar para tela inicial */}
-      <button
-        onClick={() => navigate("/")}
-        className="fixed top-4 left-4 z-40 flex items-center gap-2 px-3 py-2 rounded-lg bg-card/70 border border-border backdrop-blur-sm text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors text-xs font-medium"
-        aria-label="Voltar"
-      >
-        <Home className="w-4 h-4" />
-        <span className="hidden sm:inline">Início</span>
-      </button>
-
-      {/* Security warning overlay */}
       {showWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm px-4">
-          <div className="max-w-xl w-full text-center p-8 rounded-2xl border-2 border-destructive/60 bg-destructive/10 backdrop-blur-md">
+          <div className="max-w-xl w-full text-center p-8 rounded-2xl border-2 border-destructive/60 bg-destructive/10">
             <ShieldAlert className="w-20 h-20 text-destructive mx-auto mb-6" />
-            <h2 className="text-3xl md:text-4xl font-extrabold text-destructive mb-4">
-              ⚠️ AVISO DE SEGURANÇA
-            </h2>
-            <p className="text-lg text-foreground font-semibold mb-4">
-              O Astrokitos é protegido e deve permanecer assim.
-            </p>
-            <p className="text-muted-foreground mb-4">
-              Não tente inspecionar, copiar ou modificar o código-fonte desta plataforma.
-              Todas as tentativas são registradas e monitoradas.
-            </p>
-            <div className="p-4 rounded-lg bg-destructive/20 border border-destructive/40 mb-6">
-              <p className="text-destructive font-bold text-lg">
-                🚫 Não tente isso novamente.
-              </p>
-              <p className="text-destructive/80 text-sm mt-1">
-                Continuar resultará no bloqueio permanente do seu acesso.
-              </p>
-            </div>
-            <button
-              onClick={dismissWarning}
-              className="px-8 py-3 rounded-lg bg-destructive text-foreground font-semibold hover:bg-destructive/80 transition-colors"
-            >
-              Entendi, não farei novamente
+            <h2 className="text-3xl font-extrabold text-destructive mb-4">⚠️ AVISO DE SEGURANÇA</h2>
+            <p className="text-muted-foreground mb-6">Não tente inspecionar o código.</p>
+            <button onClick={dismissWarning} className="px-8 py-3 rounded-lg bg-destructive text-white font-semibold">
+              Entendi
             </button>
           </div>
         </div>
       )}
+
       <NotificationContainer notifications={notifications} onRemove={removeNotification} />
-      <TaskModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        tasks={tasks}
-        onStartTasks={handleStartTasks}
-      />
+      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} tasks={tasks} onStartTasks={handleStartTasks} />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-sm flex flex-col items-center"
-      >
-        <motion.div
-          className="flex flex-col items-center mb-2"
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <h1 className="text-4xl font-bold italic text-gradient tracking-wide" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>Astrokitos</h1>
-        </motion.div>
-
-        <p className="text-muted-foreground text-center mb-6 uppercase tracking-[0.25em] text-xs">
-          Sua plataforma de estudos
-        </p>
-
-        <SavedAccounts onSelectAccount={handleSelectAccount} currentRa={currentRa} />
-
-        {userName && (
-          <motion.button
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleLogout}
-            className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 rounded-lg text-destructive text-sm font-medium transition-colors"
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-3xl">
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate("/")}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition text-sm"
           >
-            <LogOut className="w-4 h-4" />
-            Sair da conta ({userName})
-          </motion.button>
-        )}
-
-        <LoginForm 
-          onSearchTasks={handleSearchTasks} 
-          onVerify={handleVerify}
-          isLoading={isLoading} 
-          userName={userName}
-          initialRa={currentRa}
-        />
-
-        <div className="mt-6 flex flex-col items-center text-center">
-          <span className="text-foreground text-sm mb-2">Entre no nosso servidor do Discord</span>
-          <motion.a
-            href="https://discord.gg/wc4TUHG7"
-            target="_blank"
-            rel="noopener noreferrer"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 text-gradient font-semibold"
-          >
-            <svg width="20" height="16" viewBox="0 0 30 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25.3921 1.94129C23.4508 1.04167 21.3832 0.378789 19.2052 0C18.9369 0.473487 18.6212 1.12058 18.416 1.64142C16.1117 1.2942 13.8232 1.2942 11.5663 1.64142C11.3453 1.12058 11.0296 0.473487 10.7613 0C8.5833 0.378789 6.51574 1.04167 4.57445 1.94129L0.660291 7.84409C-0.397162 13.6048 0.123673 19.2709 2.72785 21.2122C5.23733 22.3801 7.71524 23.1535 10 23.1535C10.6158 22.317 11.1524 21.4174 11.6259 20.4862C10.7263 20.1547 9.87398 19.7286 9.06905 19.2393C9.29001 19.0815 9.49519 18.9079 9.70037 18.7501L14.6404 21.0544L20.0008 21.0544L24.8777 18.7501C25.0829 18.9237 25.2881 19.0815 25.509 19.2393C24.7041 19.7286 23.8361 20.139 22.9522 20.4862C23.4257 21.4174 23.9623 22.317 24.5778 23.1535C26.8608 22.3801 29.386 21.2122 31.8744 19.2709C32.4899 12.6894 30.817 6.99182 27.4236 1.94129H25.3921ZM10.0038 15.7987C8.52017 15.7987 7.30489 14.4256 7.30489 12.7368C7.30489 11.048 8.4886 9.67491 10.0038 9.67491C11.5189 9.67491 12.7184 11.048 12.7026 12.7368C12.7026 14.4098 11.5189 15.7987 10.0038 15.7987ZM19.9628 15.7987C18.4792 15.7987 17.2639 14.4256 17.2639 12.7368C17.2639 11.048 18.4476 9.67491 19.9628 9.67491C21.4779 9.67491 22.6774 11.048 22.6616 12.7368C22.6616 14.4098 21.4779 15.7987 19.9628 15.7987Z" fill="currentColor"/>
-            </svg>
-            <span>DISCORD BETA</span>
-          </motion.a>
+            <Home className="w-4 h-4" /> Hub
+          </button>
+          <div className="flex items-center gap-2">
+            {session && <span className="text-xs text-muted-foreground hidden sm:inline">{session.nick}</span>}
+            <button
+              onClick={() => { logout(); navigate("/login"); }}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-destructive/40 text-destructive/80 hover:bg-destructive/10 transition text-sm"
+            >
+              <LogOut className="w-4 h-4" /> Sair
+            </button>
+          </div>
         </div>
 
-        {/* Admin button - fixed bottom right, nearly invisible, requires 3 clicks */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => {
-            const newCount = adminClickCount + 1;
-            setAdminClickCount(newCount);
-            if (newCount >= 3) {
-              setAdminClickCount(0);
-              navigate("/admin-login");
-            }
-          }}
-          className="fixed bottom-2 right-2 p-2 text-muted-foreground/5 hover:text-muted-foreground/15 transition-colors z-50 select-none"
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl border border-border bg-card overflow-hidden mb-6"
         >
-          <Shield className="w-3 h-3" />
-        </motion.button>
+          <div className="relative p-6 md:p-8">
+            <div className="absolute inset-0 bg-gradient-brand opacity-10 pointer-events-none" />
+            <div className="relative flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-brand flex items-center justify-center glow-primary shrink-0">
+                <Zap className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold font-bricolage mb-1">TarefaSP</h1>
+                <p className="text-muted-foreground text-sm">
+                  Resolve automaticamente as tarefas da Sala do Futuro para <b className="text-foreground">{session?.nick}</b>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
-        {/* Botão de sair do admin - só aparece durante manutenção */}
-        {MAINTENANCE_CONFIG.MAINTENANCE_MODE && (
-          <button
-            onClick={handleLogoutAdmin}
-            className="mt-4 text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
+          <Button
+            onClick={() => handleSearch("pending")}
+            disabled={isLoading}
+            className="w-full bg-gradient-brand text-white font-semibold py-6 glow-primary"
           >
-            Sair do modo admin
-          </button>
-        )}
-      </motion.div>
+            {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+            Buscar Atividades Pendentes
+          </Button>
+          <Button
+            onClick={() => handleSearch("expired")}
+            disabled={isLoading}
+            variant="outline"
+            className="w-full py-6"
+          >
+            Buscar Atividades Expiradas
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
