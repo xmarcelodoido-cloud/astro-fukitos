@@ -138,6 +138,11 @@ const ModeSelect = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {session && (
+              <span className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+                <User className="w-3.5 h-3.5" /> {session.nick}
+              </span>
+            )}
             <button
               onClick={() => navigate("/perfil")}
               className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition text-sm font-medium"
@@ -152,6 +157,12 @@ const ModeSelect = () => {
             >
               <Heart className="w-4 h-4" /> <span className="hidden sm:inline">Apoiar</span>
             </a>
+            <button
+              onClick={() => { logout(); navigate("/login"); }}
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-destructive/40 text-destructive/80 hover:bg-destructive/10 transition text-sm font-medium"
+            >
+              <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </motion.header>
 
