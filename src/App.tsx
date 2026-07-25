@@ -8,6 +8,8 @@ import { MaintenanceMode } from "@/components/MaintenanceMode";
 import { SecurityShield } from "@/components/SecurityShield";
 import { EntryDonationModal } from "@/components/EntryDonationModal";
 import { useMaintenanceSetting } from "@/hooks/useMaintenanceSetting";
+import { SessionProvider } from "@/contexts/SessionContext";
+import { RequireAuth } from "@/components/RequireAuth";
 
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -20,7 +22,9 @@ const LeiaSP = lazy(() => import("./pages/LeiaSP"));
 const Redacao = lazy(() => import("./pages/Redacao"));
 const Matific = lazy(() => import("./pages/Matific"));
 const Khan = lazy(() => import("./pages/Khan"));
+const Speak = lazy(() => import("./pages/Speak"));
 const Perfil = lazy(() => import("./pages/Perfil"));
+const Login = lazy(() => import("./pages/Login"));
 
 const queryClient = new QueryClient();
 
@@ -29,11 +33,7 @@ const AppShell = () => {
   const { state: maintenance, loading } = useMaintenanceSetting();
 
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    try {
-      return localStorage.getItem("fukitos_admin_unlocked") === "true";
-    } catch {
-      return false;
-    }
+    try { return localStorage.getItem("fukitos_admin_unlocked") === "true"; } catch { return false; }
   });
 
   useEffect(() => {
@@ -43,36 +43,31 @@ const AppShell = () => {
     } catch { /* ignore */ }
   }, []);
 
-  // Permite acesso ao admin mesmo em manutenção
-  const isAdminRoute =
-    location.pathname.startsWith("/admin");
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   if (loading) return null;
 
   if (maintenance?.active && !isUnlocked && !isAdminRoute) {
-    return (
-      <MaintenanceMode
-        onUnlock={() => setIsUnlocked(true)}
-        expectedReturn={maintenance.expected_return}
-      />
-    );
+    return <MaintenanceMode onUnlock={() => setIsUnlocked(true)} expectedReturn={maintenance.expected_return} />;
   }
 
   return (
     <Suspense fallback={null}>
       <EntryDonationModal />
       <Routes>
-        <Route path="/" element={<ModeSelect />} />
-        <Route path="/automatico" element={<Index />} />
-        <Route path="/ia" element={<ModoIA />} />
-        <Route path="/ia/sessao/:sessionId" element={<SessaoIA />} />
-        <Route path="/leia" element={<LeiaSP />} />
-        <Route path="/redacao" element={<Redacao />} />
-        <Route path="/matific" element={<Matific />} />
-        <Route path="/khan" element={<Khan />} />
-        <Route path="/perfil" element={<Perfil />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/" element={<RequireAuth><ModeSelect /></RequireAuth>} />
+        <Route path="/automatico" element={<RequireAuth><Index /></RequireAuth>} />
+        <Route path="/ia" element={<RequireAuth><ModoIA /></RequireAuth>} />
+        <Route path="/ia/sessao/:sessionId" element={<RequireAuth><SessaoIA /></RequireAuth>} />
+        <Route path="/leia" element={<RequireAuth><LeiaSP /></RequireAuth>} />
+        <Route path="/redacao" element={<RequireAuth><Redacao /></RequireAuth>} />
+        <Route path="/matific" element={<RequireAuth><Matific /></RequireAuth>} />
+        <Route path="/khan" element={<RequireAuth><Khan /></RequireAuth>} />
+        <Route path="/speak" element={<RequireAuth><Speak /></RequireAuth>} />
+        <Route path="/perfil" element={<RequireAuth><Perfil /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
@@ -86,7 +81,9 @@ const App = () => (
       <Sonner />
       <SecurityShield>
         <BrowserRouter>
-          <AppShell />
+          <SessionProvider>
+            <AppShell />
+          </SessionProvider>
         </BrowserRouter>
       </SecurityShield>
     </TooltipProvider>
