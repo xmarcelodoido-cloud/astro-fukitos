@@ -11,9 +11,12 @@ import {
   Heart,
   ShieldCheck,
   User,
+  Mic,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+import { useSession } from "@/contexts/SessionContext";
 
 type Platform = {
   name: string;
