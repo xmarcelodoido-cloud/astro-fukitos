@@ -1,104 +1,81 @@
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Zap,
-  Brain,
-  BookOpen,
-  PenSquare,
-  Calculator,
-  Sparkles,
-  ArrowRight,
-  Heart,
-  ShieldCheck,
-  User,
-  Mic,
-  LogOut,
+  Zap, Brain, BookOpen, PenSquare, Calculator, Sparkles, Heart, User, Mic,
+  LogOut, Home, LayoutGrid, CheckCircle2, Users, Activity, CalendarCheck,
 } from "lucide-react";
-import { useState } from "react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { useSession } from "@/contexts/SessionContext";
 
-type Platform = {
-  name: string;
-  description: string;
-  icon: typeof Zap;
-  href?: string;
-  available: boolean;
-  accent: "primary" | "accent";
-  badge?: string;
-};
+type Platform = { name: string; description: string; icon: typeof Zap; href: string; status: "ativa" | "em breve" };
 
 const platforms: Platform[] = [
-  {
-    name: "TarefaSP",
-    description: "Resolve automaticamente as tarefas da Sala do Futuro",
-    icon: Zap,
-    href: "/automatico",
-    available: true,
-    accent: "primary",
-    badge: "Rápido",
-  },
-  {
-    name: "Tutor IA",
-    description: "Estude com uma IA que te explica cada questão passo a passo",
-    icon: Brain,
-    href: "/ia",
-    available: true,
-    accent: "accent",
-    badge: "Educativo",
-  },
-  {
-    name: "LeiaSP",
-    description: "Leituras e atividades resolvidas em segundos",
-    icon: BookOpen,
-    href: "/leia",
-    available: true,
-    accent: "primary",
-    badge: "Em breve",
-  },
-  {
-    name: "Redação",
-    description: "Gera e envia redações como rascunho na Sala do Futuro",
-    icon: PenSquare,
-    href: "/redacao",
-    available: true,
-    accent: "accent",
-    badge: "Em breve",
-  },
-  {
-    name: "Matific",
-    description: "Resolve as atividades de matemática do Matific",
-    icon: Calculator,
-    href: "/matific",
-    available: true,
-    accent: "primary",
-    badge: "Em breve",
-  },
-  {
-    name: "Khan Academy",
-    description: "Resolução automática de exercícios da Khan",
-    icon: Sparkles,
-    href: "/khan",
-    available: true,
-    accent: "accent",
-    badge: "Em breve",
-  },
-  {
-    name: "Speak",
-    description: "Auto-completa lições da plataforma Efekta (Speak)",
-    icon: Mic,
-    href: "/speak",
-    available: true,
-    accent: "accent",
-    badge: "Novo",
-  },
+  { name: "TarefaSP", description: "Resolve as tarefas da Sala do Futuro", icon: Zap, href: "/automatico", status: "ativa" },
+  { name: "Tutor IA", description: "Estude cada questão com a IA", icon: Brain, href: "/ia", status: "ativa" },
+  { name: "Speak", description: "Auto-completa lições da Efekta", icon: Mic, href: "/speak", status: "ativa" },
+  { name: "Redação", description: "Gera redações como rascunho", icon: PenSquare, href: "/redacao", status: "em breve" },
+  { name: "LeiaSP", description: "Leituras resolvidas em segundos", icon: BookOpen, href: "/leia", status: "em breve" },
+  { name: "Matific", description: "Atividades de matemática", icon: Calculator, href: "/matific", status: "em breve" },
+  { name: "Khan Academy", description: "Exercícios da Khan", icon: Sparkles, href: "/khan", status: "em breve" },
 ];
+
+const nav = [
+  { label: "Início", icon: Home, href: "/" },
+  { label: "TarefaSP", icon: Zap, href: "/automatico" },
+  { label: "Tutor IA", icon: Brain, href: "/ia" },
+  { label: "Redação", icon: PenSquare, href: "/redacao" },
+  { label: "Speak", icon: Mic, href: "/speak" },
+  { label: "Perfil", icon: User, href: "/perfil" },
+];
+
+const readJson = <T,>(key: string, fallback: T): T => {
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; } catch { return fallback; }
+};
+
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+};
+
+const PlatformCard = ({ p, onClick }: { p: Platform; onClick: () => void }) => {
+  const Icon = p.icon;
+  const active = p.status === "ativa";
+  return (
+    <motion.button
+      whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }} onClick={onClick}
+      className="group text-left rounded-2xl border border-border bg-card p-4 hover:border-primary/60 transition card-shadow"
+    >
+      <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-3">{p.name}</div>
+      <div className="flex items-center gap-3">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-brand ${active ? "glow-primary" : "grayscale opacity-60"}`}>
+          <Icon className="w-5 h-5 text-primary-foreground" />
+        </div>
+        <div className="min-w-0">
+          <div className="font-bold font-bricolage text-foreground truncate">{p.name}</div>
+          <div className={`text-xs flex items-center gap-1 ${active ? "text-primary" : "text-muted-foreground"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-primary" : "bg-muted-foreground"}`} />
+            {active ? "automação ativa" : "em breve"}
+          </div>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-3 line-clamp-2">{p.description}</p>
+    </motion.button>
+  );
+};
 
 const ModeSelect = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { session, logout } = useSession();
   const [adminClicks, setAdminClicks] = useState(0);
+  const [amount, setAmount] = useState(10);
   useAntiInspect();
+
+  const stats = useMemo(() => readJson("astrokitos_local_stats", { tasksCompleted: 0, aiSessions: 0 }), []);
+  const accounts = useMemo(() => readJson<unknown[]>("fukitos_saved_accounts", []).length, []);
+  const activeCount = platforms.filter((p) => p.status === "ativa").length;
+  const nick = session?.nick || "Aluno";
 
   const handleAdminClick = () => {
     const next = adminClicks + 1;
@@ -107,203 +84,161 @@ const ModeSelect = () => {
     setTimeout(() => setAdminClicks(0), 1500);
   };
 
+  const doLogout = () => { logout(); navigate("/login"); };
+
+  const statCards = [
+    { label: "Tarefas feitas", value: stats.tasksCompleted, sub: "neste dispositivo", icon: CheckCircle2 },
+    { label: "Sessões IA", value: stats.aiSessions, sub: "estudos com o tutor", icon: Brain },
+    { label: "Contas", value: accounts, sub: "salvas no aparelho", icon: Users },
+    { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
+  ];
+
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Glow blobs */}
-      <div className="absolute top-0 left-1/4 w-[28rem] h-[28rem] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[28rem] h-[28rem] rounded-full bg-accent/20 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-background flex">
+      <button onClick={handleAdminClick} className="fixed bottom-1 right-1 w-3 h-3 rounded-full opacity-0 z-50" aria-label=" " tabIndex={-1} />
 
-      {/* Hidden admin trigger */}
-      <button
-        onClick={handleAdminClick}
-        className="fixed bottom-1 right-1 w-3 h-3 rounded-full opacity-0 hover:opacity-10 transition z-50 select-none"
-        aria-label=" "
-        tabIndex={-1}
-      />
-
-      <div className="relative z-10 container mx-auto px-4 py-10 md:py-14 max-w-6xl">
-        {/* Header */}
-        <motion.header
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center justify-between mb-8"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center glow-primary">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold font-bricolage text-gradient">
-              Astrokitos
-            </span>
+      {/* Sidebar */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card/40 p-4 sticky top-0 h-screen">
+        <div className="flex items-center gap-3 px-2 mb-8">
+          <div className="w-9 h-9 rounded-xl bg-gradient-brand flex items-center justify-center glow-primary">
+            <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
-          <div className="flex items-center gap-2">
-            {session && (
-              <span className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
-                <User className="w-3.5 h-3.5" /> {session.nick}
-              </span>
-            )}
-            <button
-              onClick={() => navigate("/perfil")}
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition text-sm font-medium"
-            >
-              <User className="w-4 h-4" /> <span className="hidden sm:inline">Perfil</span>
-            </button>
-            <a
-              href="https://pixgg.com/zenin"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition text-sm font-medium"
-            >
-              <Heart className="w-4 h-4" /> <span className="hidden sm:inline">Apoiar</span>
-            </a>
-            <button
-              onClick={() => { logout(); navigate("/login"); }}
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg border border-destructive/40 text-destructive/80 hover:bg-destructive/10 transition text-sm font-medium"
-            >
-              <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Sair</span>
-            </button>
+          <div>
+            <div className="font-bold font-bricolage text-gradient text-lg leading-none">Astrokitos</div>
+            <div className="text-[10px] text-primary flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 rounded-full bg-primary" /> online</div>
           </div>
-        </motion.header>
-
-        {/* Welcome card */}
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.05 }}
-          className="relative rounded-3xl border border-border bg-card overflow-hidden mb-6"
-        >
-          <div className="absolute inset-0 bg-gradient-brand opacity-10 pointer-events-none" />
-          <div className="relative p-6 md:p-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-semibold mb-4">
-              <ShieldCheck className="w-3.5 h-3.5" /> Plataforma segura & anônima
-            </div>
-            <h1 className="text-3xl md:text-5xl font-bold font-bricolage mb-3">
-              Bem-vindo ao <span className="text-gradient">Astrokitos</span>
-            </h1>
-            <p className="text-muted-foreground max-w-2xl">
-              Escolha uma plataforma abaixo para resolver, estudar ou automatizar suas
-              atividades da Sala do Futuro — tudo em minutos, do seu jeito.
-            </p>
-          </div>
-        </motion.section>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
-          {[
-            { label: "Plataformas", value: `${platforms.length}` },
-            {
-              label: "Ativas",
-              value: `${platforms.filter((p) => p.badge !== "Em breve").length}`,
-            },
-            {
-              label: "Em breve",
-              value: `${platforms.filter((p) => p.badge === "Em breve").length}`,
-            },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-2xl border border-border bg-card p-4 md:p-5 text-center"
-            >
-              <div className="text-2xl md:text-3xl font-bold text-gradient font-bricolage">
-                {s.value}
-              </div>
-              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wider mt-1">
-                {s.label}
-              </div>
-            </div>
-          ))}
         </div>
+        <nav className="space-y-1 flex-1">
+          {nav.map((n) => {
+            const Icon = n.icon; const on = pathname === n.href;
+            return (
+              <button key={n.href} onClick={() => navigate(n.href)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${on ? "bg-primary/15 text-primary border border-primary/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                <Icon className="w-4 h-4" /> {n.label}
+              </button>
+            );
+          })}
+          <div className="pt-4 text-[10px] uppercase tracking-widest text-muted-foreground px-3">Plataformas</div>
+          {platforms.filter((p) => p.status === "em breve").map((p) => (
+            <button key={p.href} onClick={() => navigate(p.href)} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary">
+              <LayoutGrid className="w-4 h-4" /> {p.name}
+            </button>
+          ))}
+        </nav>
+        <div className="border-t border-border pt-4 space-y-2">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-9 h-9 rounded-full bg-gradient-brand flex items-center justify-center font-bold text-primary-foreground">{nick[0]}</div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground truncate">{nick}</div>
+              <div className="text-[10px] text-primary">Conectado</div>
+            </div>
+          </div>
+          <button onClick={doLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/10">
+            <LogOut className="w-4 h-4" /> Trocar de conta
+          </button>
+        </div>
+      </aside>
 
-        {/* Platforms */}
-        <section>
-          <div className="flex items-end justify-between mb-4">
-            <h2 className="text-xl md:text-2xl font-bold font-bricolage">
-              Plataformas
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              Toque em uma para começar
-            </span>
+      {/* Main */}
+      <main className="flex-1 min-w-0 pb-24 md:pb-10">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-6">
+          {/* Mobile header */}
+          <div className="md:hidden flex items-center justify-between">
+            <span className="font-bold font-bricolage text-gradient text-xl">Astrokitos</span>
+            <button onClick={doLogout} className="text-destructive"><LogOut className="w-5 h-5" /></button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {platforms.map((p, i) => {
-              const Icon = p.icon;
-              const disabled = !p.available;
-              return (
-                <motion.button
-                  key={p.name}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: i * 0.05 }}
-                  whileHover={disabled ? undefined : { y: -3 }}
-                  whileTap={disabled ? undefined : { scale: 0.98 }}
-                  onClick={() => !disabled && p.href && navigate(p.href)}
-                  disabled={disabled}
-                  className={`group relative text-left rounded-2xl border p-5 transition-all overflow-hidden ${
-                    disabled
-                      ? "border-border bg-card/60 cursor-not-allowed opacity-60"
-                      : "border-border bg-card hover:border-primary/60 card-shadow"
-                  }`}
-                >
-                  {!disabled && (
-                    <div
-                      className={`absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ${
-                        p.accent === "primary"
-                          ? "bg-gradient-brand"
-                          : "bg-gradient-brand-reverse"
-                      }`}
-                      style={{ padding: 1, WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude" as any }}
-                    />
-                  )}
+          <div className="grid lg:grid-cols-3 gap-4">
+            {/* Greeting */}
+            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              className="lg:col-span-2 relative rounded-3xl border border-border bg-card overflow-hidden p-6 md:p-8">
+              <div className="absolute inset-0 bg-gradient-brand opacity-10 pointer-events-none" />
+              <div className="relative">
+                <p className="text-muted-foreground">{greeting()},</p>
+                <h1 className="text-3xl md:text-5xl font-bold font-bricolage text-gradient uppercase break-words">{nick}</h1>
+                <p className="text-xs text-muted-foreground mt-2 uppercase tracking-wide">RA {session?.ra ?? "—"} · Sala do Futuro</p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <button onClick={() => navigate("/automatico")} className="px-4 py-2 rounded-xl bg-gradient-brand text-primary-foreground text-sm font-semibold glow-primary">Fazer tarefas</button>
+                  <button onClick={() => navigate("/ia")} className="px-4 py-2 rounded-xl border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/10">Estudar com IA</button>
+                </div>
+              </div>
+            </motion.section>
 
-                  <div className="relative flex items-start gap-4">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                        p.accent === "primary"
-                          ? "bg-gradient-brand"
-                          : "bg-gradient-brand-reverse"
-                      } ${disabled ? "grayscale" : "glow-primary"}`}
-                    >
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold font-bricolage text-lg text-foreground truncate">
-                          {p.name}
-                        </h3>
-                        {p.badge && !disabled && (
-                          <span className="px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-semibold uppercase tracking-wider">
-                            {p.badge}
-                          </span>
-                        )}
-                        {disabled && (
-                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
-                            Em breve
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-snug">
-                        {p.description}
-                      </p>
-                      {!disabled && (
-                        <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:gap-2 transition-all">
-                          Acessar <ArrowRight className="w-3.5 h-3.5" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.button>
+            {/* Donation */}
+            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="rounded-3xl border border-primary/30 bg-card p-6">
+              <div className="flex items-center gap-2 text-primary text-xs font-semibold mb-2"><Heart className="w-4 h-4" /> Apoie o projeto</div>
+              <h3 className="font-bold font-bricolage text-lg text-foreground">Ajude a manter o Astrokitos no ar</h3>
+              <p className="text-xs text-muted-foreground mt-1">Tudo é de graça — sua doação paga os servidores e a IA criada pelo Zenos.</p>
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                {[5, 10, 25].map((v) => (
+                  <button key={v} onClick={() => setAmount(v)}
+                    className={`py-2 rounded-lg text-sm font-semibold border transition ${amount === v ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`}>R$ {v}</button>
+                ))}
+              </div>
+              <a href="https://pixgg.com/zenin" target="_blank" rel="noopener noreferrer"
+                className="mt-3 block text-center py-2.5 rounded-xl bg-gradient-brand text-primary-foreground font-semibold text-sm">Doar via Pix</a>
+            </motion.section>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {statCards.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className="rounded-2xl border border-border bg-card p-4">
+                  <Icon className="w-4 h-4 text-primary mb-2" />
+                  <div className="text-2xl font-bold font-bricolage text-gradient">{s.value}</div>
+                  <div className="text-sm font-semibold text-foreground">{s.label}</div>
+                  <div className="text-xs text-muted-foreground">{s.sub}</div>
+                </div>
               );
             })}
           </div>
-        </section>
 
-        <p className="text-center text-xs text-muted-foreground/70 mt-10">
-          Feito com <span className="text-primary">♥</span> por Zenos · Todas as
-          plataformas usam autenticação segura da Sala do Futuro
-        </p>
-      </div>
+          {/* Agenda */}
+          <div className="rounded-2xl border border-border bg-card p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center"><CalendarCheck className="w-5 h-5 text-primary" /></div>
+            <div>
+              <div className="font-semibold text-foreground">Agenda</div>
+              <div className="text-xs text-muted-foreground">Abra o TarefaSP para ver as atividades pendentes da sua turma.</div>
+            </div>
+          </div>
+
+          {/* Mais acessadas */}
+          <section>
+            <div className="flex items-end justify-between mb-3">
+              <h2 className="text-xl font-bold font-bricolage text-foreground">Mais acessadas</h2>
+              <span className="text-xs text-muted-foreground">todas as plataformas</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {platforms.filter((p) => p.status === "ativa").map((p) => <PlatformCard key={p.href} p={p} onClick={() => navigate(p.href)} />)}
+            </div>
+          </section>
+
+          {/* Suas plataformas */}
+          <section>
+            <h2 className="text-xl font-bold font-bricolage text-foreground mb-3">Suas plataformas</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {platforms.map((p) => <PlatformCard key={p.href} p={p} onClick={() => navigate(p.href)} />)}
+            </div>
+          </section>
+
+          <p className="text-center text-xs text-muted-foreground pt-4">Astrokitos · feito por <span className="text-primary">Zenos</span></p>
+        </div>
+      </main>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-card/95 backdrop-blur grid grid-cols-5">
+        {nav.slice(0, 5).map((n) => {
+          const Icon = n.icon; const on = pathname === n.href;
+          return (
+            <button key={n.href} onClick={() => navigate(n.href)} className={`py-3 flex flex-col items-center gap-1 text-[10px] ${on ? "text-primary" : "text-muted-foreground"}`}>
+              <Icon className="w-5 h-5" /> {n.label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };

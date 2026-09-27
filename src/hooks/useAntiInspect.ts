@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { logger } from "@/lib/logger";
+import { DEV_ENV } from "@/lib/devEnv";
 
 const MAX_VIOLATIONS = 5;
 const BAN_THRESHOLD = 10;
@@ -63,6 +64,7 @@ export const useAntiInspect = (options: UseAntiInspectOptions = {}) => {
   }, []);
 
   useEffect(() => {
+    if (DEV_ENV) return; // editor/preview: sem bloqueios
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       registerViolation("contextmenu");

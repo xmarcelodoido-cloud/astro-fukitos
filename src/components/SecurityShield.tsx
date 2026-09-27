@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { logger } from "@/lib/logger";
+import { DEV_ENV } from "@/lib/devEnv";
 
 const BAN_KEY = "astrokitos_banned";
 const ATTEMPTS_KEY = "astrokitos_devtools_attempts";
@@ -13,7 +14,10 @@ const BLUR_CLASS = "astrokitos-devtools-blur";
  * - Conta tentativas; após MAX_ATTEMPTS, aplica banimento permanente.
  * - Bloqueia a página com overlay quando DevTools está aberto.
  */
-export const SecurityShield = ({ children }: { children: ReactNode }) => {
+export const SecurityShield = ({ children }: { children: ReactNode }) =>
+  DEV_ENV ? <>{children}</> : <ActiveShield>{children}</ActiveShield>;
+
+const ActiveShield = ({ children }: { children: ReactNode }) => {
   const [blocked, setBlocked] = useState(false);
   const [banned, setBanned] = useState(() => {
     try {
