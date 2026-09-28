@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { setSessionData } from "@/lib/api";
+import { setSid } from "@/lib/openfuture";
 
 export interface RaSession {
   ra: string;
@@ -7,6 +8,12 @@ export interface RaSession {
   auth_token: string;
   roomCode: string;
   targets: string[];
+  /** Partes separadas do RA informadas no login */
+  raDigits?: string;
+  digito?: string;
+  uf?: string;
+  /** Conectado também ao backend das plataformas (Matific, LeiaSP, etc.) */
+  ofConnected?: boolean;
 }
 
 interface SessionContextValue {
@@ -40,6 +47,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } else {
         sessionStorage.removeItem(KEY);
         setSessionData(null);
+        setSid(null);
       }
     } catch { /* ignore */ }
   };
