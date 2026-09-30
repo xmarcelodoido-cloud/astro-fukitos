@@ -215,47 +215,76 @@ serve(async (req) => {
           break;
         }
 
-        // Build Catalyst payload (matching Eclipse Lunar format)
-        const taskPayload = { ...taskData, score: 100, is_prova: false, task_id: taskId };
-        delete taskPayload.id;
+        // 1) Busca as questões com o gabarito
+        const applyRes = await fetch(
+          `${ECLIPSE_API}/tms/task/${taskId}/apply?preview_mode=false`,
+          { method: "GET", headers: eduspHeaders(token) },
+        );
+        if (!applyRes.ok) {
+          const err = await applyRes.text();
+          throw new Error(`Não foi possível abrir a tarefa (${applyRes.status}): ${err.slice(0, 200)}`);
+        }
+        const apply = await applyRes.json();
+        const questions: any[] = apply?.questions ?? [];
+        if (!questions.length) {
+          throw new Error("A tarefa não retornou questões");
+        }
 
-        const completePayload = {
-          tasks: [taskPayload],
-          auth_token: token,
-          publication_targets: targets || [],
-          room_name_for_apply: taskData.room || taskData.publication_target || "",
-          time_min: minTime || 1,
-          time_max: maxTime || 3,
-          is_draft: isDraft || false,
-          salvar_rascunho: isDraft || false,
-          user_nick: userNick || "",
+        // 2) Monta as respostas
+        const answers: Record<string, any> = {};
+        for (const q of questions) {
+          answers[String(q.id)] = {
+            question_id: q.id,
+            question_type: q.type,
+            answer: buildAnswer(q),
+          };
+        }
+
+        const minM = Number(minTime) || 1;
+        const maxM = Number(maxTime) || Math.max(minM, 3);
+        const minutes = minM + Math.random() * Math.max(0, maxM - minM);
+        const duration = Math.round(minutes * 60 * 1000);
+        const room = taskData.room || taskData.publication_target ||
+          (Array.isArray(targets) ? targets[0] : "") || "";
+
+        const answerBody = {
+          status: isDraft ? "draft" : "submitted",
+          accessed_on: "room",
+          executed_on: room,
+          answers,
+          duration,
+          ...(userNick ? { executed_by: userNick } : {}),
         };
 
-        console.log(`[complete] Sending to Catalyst: task_id=${taskId}`);
-
-        const completeRes = await fetch(`${CATALYST_API}/complete`, {
+        const submitRes = await fetch(`${ECLIPSE_API}/tms/task/${taskId}/answer`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(completePayload),
+          headers: eduspHeaders(token),
+          body: JSON.stringify(answerBody),
         });
 
-        const responseText = await completeRes.text();
-        console.log(`[complete] Catalyst response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
+        const submitText = await submitRes.text();
+        console.log(`[complete] answer status=${submitRes.status} body=${submitText.slice(0, 300)}`);
 
-        let responseData;
-        try {
-          responseData = JSON.parse(responseText);
-        } catch {
-          throw new Error(`Catalyst response not JSON: ${completeRes.status} - ${responseText}`);
+        if (!submitRes.ok) {
+          result = {
+            success: false,
+            error: `Falha ao enviar (${submitRes.status})`,
+            detail: submitText.slice(0, 300),
+            _taskId: taskId,
+          };
+          break;
         }
 
-        if (responseData.success) {
-          // Return immediately - don't wait/poll (causes edge function timeout)
-          // The client treats success from Catalyst as task completed
-          result = { success: true, ...responseData, _taskId: taskId };
-        } else {
-          result = { success: false, ...responseData, _taskId: taskId };
-        }
+        let submitData: any = {};
+        try { submitData = JSON.parse(submitText); } catch { /* resposta vazia */ }
+
+        result = {
+          success: true,
+          draft: !!isDraft,
+          questions: questions.length,
+          answer_id: submitData?.id,
+          _taskId: taskId,
+        };
         break;
       }
 
