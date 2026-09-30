@@ -5,8 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ECLIPSE_API = "https://edusp.crimsonzerohub.xyz";
-const CATALYST_API = "https://catalyst.crimsonzerohub.xyz";
+// API oficial da Sala do Futuro (o espelho antigo saiu do ar)
+const ECLIPSE_API = "https://edusp-api.ip.tv";
 const SED_LOGIN_PROXY = "https://taskitos.cupiditys.lol";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
