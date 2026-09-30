@@ -87,12 +87,25 @@ const ModeSelect = () => {
 
   const doLogout = () => { logout(); navigate("/login"); };
 
-  const statCards = [
-    { label: "Tarefas feitas", value: stats.tasksCompleted, sub: "neste dispositivo", icon: CheckCircle2 },
-    { label: "Sessões IA", value: stats.aiSessions, sub: "estudos com o tutor", icon: Brain },
-    { label: "Contas", value: accounts, sub: "salvas no aparelho", icon: Users },
-    { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
-  ];
+  const [remote, setRemote] = useState<DashboardData | null>(null);
+  useEffect(() => {
+    if (!session?.ofConnected) return;
+    getDashboard().then(setRemote).catch(() => {});
+  }, [session?.ofConnected]);
+
+  const statCards = remote?.stats
+    ? [
+        { label: "Tarefas pendentes", value: remote.stats.tarefas ?? 0, sub: "na Sala do Futuro", icon: CheckCircle2 },
+        { label: "Redações", value: remote.stats.redacoes ?? 0, sub: "a entregar", icon: Brain },
+        { label: "Mensagens", value: remote.stats.mensagens ?? 0, sub: "não lidas", icon: Users },
+        { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
+      ]
+    : [
+        { label: "Tarefas feitas", value: stats.tasksCompleted, sub: "neste dispositivo", icon: CheckCircle2 },
+        { label: "Sessões IA", value: stats.aiSessions, sub: "estudos com o tutor", icon: Brain },
+        { label: "Contas", value: accounts, sub: "salvas no aparelho", icon: Users },
+        { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
+      ];
 
   return (
     <div className="min-h-screen bg-background flex">
