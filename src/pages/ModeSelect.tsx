@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { useSession } from "@/contexts/SessionContext";
+import { DashboardData, getDashboard } from "@/lib/openfuture";
 
 type Platform = { name: string; description: string; icon: typeof Zap; href: string; status: "ativa" | "em breve" };
 
@@ -14,9 +15,9 @@ const platforms: Platform[] = [
   { name: "TarefaSP", description: "Resolve as tarefas da Sala do Futuro", icon: Zap, href: "/automatico", status: "ativa" },
   { name: "Tutor IA", description: "Estude cada questão com a IA", icon: Brain, href: "/ia", status: "ativa" },
   { name: "Speak", description: "Auto-completa lições da Efekta", icon: Mic, href: "/speak", status: "ativa" },
-  { name: "Redação", description: "Gera redações como rascunho", icon: PenSquare, href: "/redacao", status: "em breve" },
-  { name: "LeiaSP", description: "Leituras resolvidas em segundos", icon: BookOpen, href: "/leia", status: "em breve" },
-  { name: "Matific", description: "Atividades de matemática", icon: Calculator, href: "/matific", status: "em breve" },
+  { name: "Redação", description: "Gera redações como rascunho", icon: PenSquare, href: "/redacao", status: "ativa" },
+  { name: "LeiaSP", description: "Leituras resolvidas em segundos", icon: BookOpen, href: "/leia", status: "ativa" },
+  { name: "Matific", description: "Atividades de matemática", icon: Calculator, href: "/matific", status: "ativa" },
   { name: "Khan Academy", description: "Exercícios da Khan", icon: Sparkles, href: "/khan", status: "em breve" },
 ];
 
@@ -86,12 +87,25 @@ const ModeSelect = () => {
 
   const doLogout = () => { logout(); navigate("/login"); };
 
-  const statCards = [
-    { label: "Tarefas feitas", value: stats.tasksCompleted, sub: "neste dispositivo", icon: CheckCircle2 },
-    { label: "Sessões IA", value: stats.aiSessions, sub: "estudos com o tutor", icon: Brain },
-    { label: "Contas", value: accounts, sub: "salvas no aparelho", icon: Users },
-    { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
-  ];
+  const [remote, setRemote] = useState<DashboardData | null>(null);
+  useEffect(() => {
+    if (!session?.ofConnected) return;
+    getDashboard().then(setRemote).catch(() => {});
+  }, [session?.ofConnected]);
+
+  const statCards = remote?.stats
+    ? [
+        { label: "Tarefas pendentes", value: remote.stats.tarefas ?? 0, sub: "na Sala do Futuro", icon: CheckCircle2 },
+        { label: "Redações", value: remote.stats.redacoes ?? 0, sub: "a entregar", icon: Brain },
+        { label: "Mensagens", value: remote.stats.mensagens ?? 0, sub: "não lidas", icon: Users },
+        { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
+      ]
+    : [
+        { label: "Tarefas feitas", value: stats.tasksCompleted, sub: "neste dispositivo", icon: CheckCircle2 },
+        { label: "Sessões IA", value: stats.aiSessions, sub: "estudos com o tutor", icon: Brain },
+        { label: "Contas", value: accounts, sub: "salvas no aparelho", icon: Users },
+        { label: "Plataformas", value: `${activeCount}/${platforms.length}`, sub: "ativas agora", icon: Activity },
+      ];
 
   return (
     <div className="min-h-screen bg-background flex">

@@ -5,8 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ECLIPSE_API = "https://edusp.crimsonzerohub.xyz";
-const CATALYST_API = "https://catalyst.crimsonzerohub.xyz";
+// API oficial da Sala do Futuro (o espelho antigo saiu do ar)
+const ECLIPSE_API = "https://edusp-api.ip.tv";
 const SED_LOGIN_PROXY = "https://taskitos.cupiditys.lol";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 
@@ -44,46 +44,40 @@ function parseEstimatedMinutes(message: string | undefined): number {
   return 2;
 }
 
-async function pollJob(jobId: string, token: string, taskId: string, isExpired: boolean, targets: string[], maxAttempts = 90): Promise<any> {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const res = await fetch(`${CATALYST_API}/job/${jobId}`, {
-        method: "GET",
-        headers: {
-          "accept": "application/json",
-          "content-type": "application/json",
-        },
-      });
+const stripHtml = (s: string) => String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-      if (!res.ok) {
-        const err = await res.text();
-        console.warn(`[pollJob] HTTP ${res.status}: ${err}`);
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
+/** Monta a resposta correta de uma questão a partir do gabarito devolvido pela API. */
+function buildAnswer(question: any): any {
+  const opts = question?.options ?? {};
 
-      const data = await res.json();
-      const status = (data.status || "").toLowerCase();
-
-      if (status === "erro" || status === "error" || status === "failed") {
-        throw new Error(`Job failed: ${data.message || JSON.stringify(data)}`);
-      }
-
-      if (status === "concluido" || status === "completed" || status === "success") {
-        // Verify task status on EDUSP
-        const verified = await verifyTaskCompletion(token, taskId, isExpired, targets);
-        return { ...data, verified, _taskId: taskId };
-      }
-
-      // status === 'pendente' — still processing
-      console.log(`[pollJob] Job ${jobId} pending, waiting...`);
-    } catch (err) {
-      console.warn(`[pollJob] Error polling job ${jobId}:`, err);
+  switch (question?.type) {
+    case "order-sentences": {
+      const sentences = opts.sentences ?? [];
+      return sentences.map((s: any) => s?.value ?? s);
     }
-
-    await new Promise(r => setTimeout(r, 5000));
+    case "fill-words": {
+      const phrase = opts.phrase ?? [];
+      return phrase.filter((_: any, i: number) => i % 2 !== 0).map((p: any) => p?.value ?? p);
+    }
+    case "fill-letters": {
+      return opts.answer ?? {};
+    }
+    case "cloud": {
+      return opts.ids ?? [];
+    }
+    case "text_ai": {
+      return { "0": stripHtml(question?.comment).slice(0, 500) || "Resposta." };
+    }
+    default: {
+      // múltipla escolha / verdadeiro-falso
+      const answer: Record<string, boolean> = {};
+      for (const key of Object.keys(opts)) {
+        const o = opts[key] ?? {};
+        answer[key] = o.answer === true || o.right === true || o.correct === true;
+      }
+      return answer;
+    }
   }
-  throw new Error("Job polling timeout");
 }
 
 async function verifyTaskCompletion(token: string, taskId: string, isExpired: boolean, targets: string[]): Promise<boolean> {
@@ -221,47 +215,76 @@ serve(async (req) => {
           break;
         }
 
-        // Build Catalyst payload (matching Eclipse Lunar format)
-        const taskPayload = { ...taskData, score: 100, is_prova: false, task_id: taskId };
-        delete taskPayload.id;
+        // 1) Busca as questões com o gabarito
+        const applyRes = await fetch(
+          `${ECLIPSE_API}/tms/task/${taskId}/apply?preview_mode=false`,
+          { method: "GET", headers: eduspHeaders(token) },
+        );
+        if (!applyRes.ok) {
+          const err = await applyRes.text();
+          throw new Error(`Não foi possível abrir a tarefa (${applyRes.status}): ${err.slice(0, 200)}`);
+        }
+        const apply = await applyRes.json();
+        const questions: any[] = apply?.questions ?? [];
+        if (!questions.length) {
+          throw new Error("A tarefa não retornou questões");
+        }
 
-        const completePayload = {
-          tasks: [taskPayload],
-          auth_token: token,
-          publication_targets: targets || [],
-          room_name_for_apply: taskData.room || taskData.publication_target || "",
-          time_min: minTime || 1,
-          time_max: maxTime || 3,
-          is_draft: isDraft || false,
-          salvar_rascunho: isDraft || false,
-          user_nick: userNick || "",
+        // 2) Monta as respostas
+        const answers: Record<string, any> = {};
+        for (const q of questions) {
+          answers[String(q.id)] = {
+            question_id: q.id,
+            question_type: q.type,
+            answer: buildAnswer(q),
+          };
+        }
+
+        const minM = Number(minTime) || 1;
+        const maxM = Number(maxTime) || Math.max(minM, 3);
+        const minutes = minM + Math.random() * Math.max(0, maxM - minM);
+        const duration = Math.round(minutes * 60 * 1000);
+        const room = taskData.room || taskData.publication_target ||
+          (Array.isArray(targets) ? targets[0] : "") || "";
+
+        const answerBody = {
+          status: isDraft ? "draft" : "submitted",
+          accessed_on: "room",
+          executed_on: room,
+          answers,
+          duration,
+          ...(userNick ? { executed_by: userNick } : {}),
         };
 
-        console.log(`[complete] Sending to Catalyst: task_id=${taskId}`);
-
-        const completeRes = await fetch(`${CATALYST_API}/complete`, {
+        const submitRes = await fetch(`${ECLIPSE_API}/tms/task/${taskId}/answer`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(completePayload),
+          headers: eduspHeaders(token),
+          body: JSON.stringify(answerBody),
         });
 
-        const responseText = await completeRes.text();
-        console.log(`[complete] Catalyst response: status=${completeRes.status}, body=${responseText.substring(0, 500)}`);
+        const submitText = await submitRes.text();
+        console.log(`[complete] answer status=${submitRes.status} body=${submitText.slice(0, 300)}`);
 
-        let responseData;
-        try {
-          responseData = JSON.parse(responseText);
-        } catch {
-          throw new Error(`Catalyst response not JSON: ${completeRes.status} - ${responseText}`);
+        if (!submitRes.ok) {
+          result = {
+            success: false,
+            error: `Falha ao enviar (${submitRes.status})`,
+            detail: submitText.slice(0, 300),
+            _taskId: taskId,
+          };
+          break;
         }
 
-        if (responseData.success) {
-          // Return immediately - don't wait/poll (causes edge function timeout)
-          // The client treats success from Catalyst as task completed
-          result = { success: true, ...responseData, _taskId: taskId };
-        } else {
-          result = { success: false, ...responseData, _taskId: taskId };
-        }
+        let submitData: any = {};
+        try { submitData = JSON.parse(submitText); } catch { /* resposta vazia */ }
+
+        result = {
+          success: true,
+          draft: !!isDraft,
+          questions: questions.length,
+          answer_id: submitData?.id,
+          _taskId: taskId,
+        };
         break;
       }
 
