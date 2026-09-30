@@ -44,46 +44,40 @@ function parseEstimatedMinutes(message: string | undefined): number {
   return 2;
 }
 
-async function pollJob(jobId: string, token: string, taskId: string, isExpired: boolean, targets: string[], maxAttempts = 90): Promise<any> {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const res = await fetch(`${CATALYST_API}/job/${jobId}`, {
-        method: "GET",
-        headers: {
-          "accept": "application/json",
-          "content-type": "application/json",
-        },
-      });
+const stripHtml = (s: string) => String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-      if (!res.ok) {
-        const err = await res.text();
-        console.warn(`[pollJob] HTTP ${res.status}: ${err}`);
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
+/** Monta a resposta correta de uma questão a partir do gabarito devolvido pela API. */
+function buildAnswer(question: any): any {
+  const opts = question?.options ?? {};
 
-      const data = await res.json();
-      const status = (data.status || "").toLowerCase();
-
-      if (status === "erro" || status === "error" || status === "failed") {
-        throw new Error(`Job failed: ${data.message || JSON.stringify(data)}`);
-      }
-
-      if (status === "concluido" || status === "completed" || status === "success") {
-        // Verify task status on EDUSP
-        const verified = await verifyTaskCompletion(token, taskId, isExpired, targets);
-        return { ...data, verified, _taskId: taskId };
-      }
-
-      // status === 'pendente' — still processing
-      console.log(`[pollJob] Job ${jobId} pending, waiting...`);
-    } catch (err) {
-      console.warn(`[pollJob] Error polling job ${jobId}:`, err);
+  switch (question?.type) {
+    case "order-sentences": {
+      const sentences = opts.sentences ?? [];
+      return sentences.map((s: any) => s?.value ?? s);
     }
-
-    await new Promise(r => setTimeout(r, 5000));
+    case "fill-words": {
+      const phrase = opts.phrase ?? [];
+      return phrase.filter((_: any, i: number) => i % 2 !== 0).map((p: any) => p?.value ?? p);
+    }
+    case "fill-letters": {
+      return opts.answer ?? {};
+    }
+    case "cloud": {
+      return opts.ids ?? [];
+    }
+    case "text_ai": {
+      return { "0": stripHtml(question?.comment).slice(0, 500) || "Resposta." };
+    }
+    default: {
+      // múltipla escolha / verdadeiro-falso
+      const answer: Record<string, boolean> = {};
+      for (const key of Object.keys(opts)) {
+        const o = opts[key] ?? {};
+        answer[key] = o.answer === true || o.right === true || o.correct === true;
+      }
+      return answer;
+    }
   }
-  throw new Error("Job polling timeout");
 }
 
 async function verifyTaskCompletion(token: string, taskId: string, isExpired: boolean, targets: string[]): Promise<boolean> {
