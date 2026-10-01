@@ -141,7 +141,11 @@ const ModeSelect = () => {
         </nav>
         <div className="border-t border-border pt-4 space-y-2">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-brand flex items-center justify-center font-bold text-primary-foreground">{nick[0]}</div>
+            {session?.identity?.avatar_url ? (
+              <img src={session.identity.avatar_url} alt={nick} className="w-9 h-9 rounded-full object-cover border border-primary/40" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-brand flex items-center justify-center font-bold text-primary-foreground">{nick[0]}</div>
+            )}
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground truncate">{nick}</div>
               <div className="text-[10px] text-primary">Conectado</div>
