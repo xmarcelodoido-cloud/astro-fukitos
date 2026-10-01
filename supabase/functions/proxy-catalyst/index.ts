@@ -249,12 +249,24 @@ serve(async (req) => {
         );
         if (!applyRes.ok) {
           const err = await applyRes.text();
-          throw new Error(`Não foi possível abrir a tarefa (${applyRes.status}): ${err.slice(0, 200)}`);
+          console.log(`[complete] apply status=${applyRes.status} body=${err.slice(0, 300)}`);
+          const needsCaptcha = /captcha/i.test(err);
+          result = {
+            success: false,
+            blocked: true,
+            reason: needsCaptcha ? "captcha" : "denied",
+            error: needsCaptcha
+              ? "Esta tarefa exige verificação humana na Sala do Futuro"
+              : "A Sala do Futuro bloqueou o acesso a esta tarefa",
+            _taskId: taskId,
+          };
+          break;
         }
         const apply = await applyRes.json();
         const questions: any[] = apply?.questions ?? [];
         if (!questions.length) {
-          throw new Error("A tarefa não retornou questões");
+          result = { success: false, error: "A tarefa não retornou questões", _taskId: taskId };
+          break;
         }
 
         // 2) Monta as respostas
