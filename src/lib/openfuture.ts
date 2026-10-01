@@ -110,6 +110,27 @@ export const getMensagens = () => call<any>("/api/mensagens");
 export const lerMensagens = (ids?: string[]) =>
   call<any>("/api/mensagens/ler", "POST", ids ? { ids } : {});
 
+// ==================== IDENTIDADE DO ALUNO ====================
+// A rota /api/platform/alura/list devolve `raw.userInfo` com name/nick/avatar_url.
+export interface OfIdentity {
+  name: string;
+  nick: string;
+  avatar_url?: string;
+}
+
+export async function getIdentity(): Promise<OfIdentity | null> {
+  try {
+    const data = await call<{ raw?: { userInfo?: OfIdentity } }>(
+      "/api/platform/alura/list",
+    );
+    const u = data?.raw?.userInfo;
+    if (u?.name && u?.nick) return { name: u.name, nick: u.nick, avatar_url: u.avatar_url };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ==================== TAREFAS SP ====================
 
 export interface OfTask {
