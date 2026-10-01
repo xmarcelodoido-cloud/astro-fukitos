@@ -13,6 +13,7 @@ import {
   Award,
 } from "lucide-react";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
+import { useSession } from "@/contexts/SessionContext";
 
 interface SavedAccount {
   ra: string;
@@ -42,6 +43,8 @@ const loadStats = (): LocalStats => {
 const Perfil = () => {
   useAntiInspect();
   const navigate = useNavigate();
+  const { session } = useSession();
+  const identity = session?.identity;
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
   const [stats] = useState<LocalStats>(loadStats());
 
@@ -97,18 +100,33 @@ const Perfil = () => {
         >
           <div className="absolute inset-0 bg-gradient-brand opacity-10 pointer-events-none" />
           <div className="relative p-6 md:p-10 flex items-center gap-5">
-            <div className="w-20 h-20 rounded-full bg-gradient-brand flex items-center justify-center glow-primary shrink-0">
-              <User className="w-10 h-10 text-white" />
-            </div>
+            {identity?.avatar_url ? (
+              <img
+                src={identity.avatar_url}
+                alt={identity.name}
+                className="w-20 h-20 rounded-full object-cover border-2 border-primary/40 shrink-0"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-brand flex items-center justify-center glow-primary shrink-0">
+                <User className="w-10 h-10 text-white" />
+              </div>
+            )}
             <div className="min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[11px] font-semibold uppercase tracking-wider mb-2">
-                <ShieldCheck className="w-3 h-3" /> Perfil local
+                <ShieldCheck className="w-3 h-3" />
+                {identity ? "Sala do Futuro" : "Perfil local"}
               </div>
               <h1 className="text-3xl md:text-4xl font-bold font-bricolage text-foreground truncate">
-                {primary?.studentName ?? "Visitante"}
+                {identity?.name ?? session?.nick ?? primary?.studentName ?? "Visitante"}
               </h1>
               <p className="text-muted-foreground text-sm mt-1">
-                {primary ? `RA ${primary.ra}` : "Nenhuma conta salva neste dispositivo"}
+                {identity?.nick ? `@${identity.nick}` : null}
+                {identity?.nick && (session?.ra || primary?.ra) ? " · " : null}
+                {session?.ra
+                  ? `RA ${session.ra}`
+                  : primary
+                  ? `RA ${primary.ra}`
+                  : "Nenhuma conta salva neste dispositivo"}
               </p>
             </div>
           </div>

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { SavedAccounts, saveAccount } from "@/components/SavedAccounts";
 import { login } from "@/lib/api";
-import { ofLogin } from "@/lib/openfuture";
+import { ofLogin, getIdentity } from "@/lib/openfuture";
 import { useSession } from "@/contexts/SessionContext";
 import { useBanCheck } from "@/hooks/useBanCheck";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
@@ -78,16 +78,19 @@ const Login = () => {
 
       // Conecta também ao backend das demais plataformas (melhor esforço)
       let ofConnected = false;
+      let identity: { name: string; nick: string; avatar_url?: string } | null = null;
       try {
         await ofLogin(ra.trim(), digito.trim(), uf, password);
         ofConnected = true;
+        // Busca a identidade real do aluno (nome, nick, avatar)
+        identity = await getIdentity();
       } catch (e) {
         console.warn("Plataformas extras indisponíveis", e);
       }
 
       const sess = {
         ra: fullRa,
-        nick: data.nick,
+        nick: identity?.name || data.nick,
         auth_token: data.auth_token,
         roomCode: data.roomCode || "",
         targets: [] as string[],
@@ -95,6 +98,7 @@ const Login = () => {
         digito: digito.trim(),
         uf: uf.toUpperCase(),
         ofConnected,
+        identity,
       };
       const { getSessionData } = await import("@/lib/api");
       const sd = getSessionData();
