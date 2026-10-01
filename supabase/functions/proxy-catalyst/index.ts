@@ -116,26 +116,53 @@ serve(async (req) => {
 
     switch (action) {
       case "login": {
-        const loginRes = await fetch(`${ECLIPSE_API}/registration/edusp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": USER_AGENT,
-          },
-          body: JSON.stringify({
-            realm: "edusp",
-            platform: "webclient",
-            id: payload.ra,
-            password: payload.password,
-          }),
-        });
-
-        if (!loginRes.ok) {
-          const err = await loginRes.text();
-          throw new Error("RA ou senha inválidos");
+        const ra = String(payload.ra ?? "").trim().toLowerCase();
+        const password = String(payload.password ?? "");
+        if (!ra || !password) {
+          result = { success: false, error: "Informe RA e senha" };
+          break;
         }
 
-        result = await loginRes.json();
+        // Passo 1: login oficial na SED (mesmo fluxo do site da Sala do Futuro)
+        const sedRes = await fetch(
+          "https://sedintegracoes.educacao.sp.gov.br/saladofuturobffapi/credenciais/api/LoginCompletoToken",
+          {
+            method: "POST",
+            headers: {
+              "Accept": "*/*",
+              "Content-Type": "application/json",
+              "ocp-apim-subscription-key": "d701a2043aa24d7ebb37e9adf60d043b",
+              "User-Agent": USER_AGENT,
+              "origin": "https://saladofuturo.educacao.sp.gov.br",
+              "referer": "https://saladofuturo.educacao.sp.gov.br/",
+            },
+            body: JSON.stringify({ user: ra, senha: password }),
+          },
+        );
+        const sedText = await sedRes.text();
+        let sed: any = {};
+        try { sed = JSON.parse(sedText); } catch { /* ignore */ }
+
+        if (!sedRes.ok || !sed?.token) {
+          console.log(`[login] SED status=${sedRes.status} body=${sedText.slice(0, 200)}`);
+          result = { success: false, error: "RA ou senha inválidos" };
+          break;
+        }
+
+        // Passo 2: troca o token SED pelo auth_token da plataforma
+        const tokRes = await fetch(`${ECLIPSE_API}/registration/edusp/token`, {
+          method: "POST",
+          headers: eduspHeaders(),
+          body: JSON.stringify({ token: sed.token }),
+        });
+        if (!tokRes.ok) {
+          const t = await tokRes.text();
+          console.log(`[login] token exchange status=${tokRes.status} body=${t.slice(0, 200)}`);
+          result = { success: false, error: "Falha ao conectar à Sala do Futuro. Tente novamente." };
+          break;
+        }
+        result = await tokRes.json();
+        if (!result?.nick && sed?.DadosUsuario?.NAME) result.nick = sed.DadosUsuario.NAME;
         break;
       }
 
