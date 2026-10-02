@@ -14,10 +14,10 @@ type Platform = { name: string; description: string; icon: typeof Zap; href: str
 const platforms: Platform[] = [
   { name: "TarefaSP", description: "Resolve as tarefas da Sala do Futuro", icon: Zap, href: "/automatico", status: "ativa" },
   { name: "Tutor IA", description: "Estude cada questão com a IA", icon: Brain, href: "/ia", status: "ativa" },
-  { name: "Speak", description: "Auto-completa lições da Efekta", icon: Mic, href: "/speak", status: "ativa" },
+  { name: "Speak", description: "Auto-completa lições da Efekta", icon: Mic, href: "/speak", status: "em breve" },
   { name: "Redação", description: "Gera redações como rascunho", icon: PenSquare, href: "/redacao", status: "ativa" },
   { name: "LeiaSP", description: "Leituras resolvidas em segundos", icon: BookOpen, href: "/leia", status: "ativa" },
-  { name: "Matific", description: "Atividades de matemática", icon: Calculator, href: "/matific", status: "ativa" },
+  { name: "Matific", description: "Atividades de matemática", icon: Calculator, href: "/matific", status: "em breve" },
   { name: "Khan Academy", description: "Exercícios da Khan", icon: Sparkles, href: "/khan", status: "em breve" },
 ];
 
@@ -26,7 +26,6 @@ const nav = [
   { label: "TarefaSP", icon: Zap, href: "/automatico" },
   { label: "Tutor IA", icon: Brain, href: "/ia" },
   { label: "Redação", icon: PenSquare, href: "/redacao" },
-  { label: "Speak", icon: Mic, href: "/speak" },
   { label: "Perfil", icon: User, href: "/perfil" },
 ];
 
@@ -44,8 +43,11 @@ const PlatformCard = ({ p, onClick }: { p: Platform; onClick: () => void }) => {
   const active = p.status === "ativa";
   return (
     <motion.button
-      whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }} onClick={onClick}
-      className="group text-left rounded-2xl border border-border bg-card p-4 hover:border-primary/60 transition card-shadow"
+      whileHover={active ? { y: -3 } : undefined}
+      whileTap={active ? { scale: 0.98 } : undefined}
+      onClick={active ? onClick : undefined}
+      disabled={!active}
+      className={`group text-left rounded-2xl border border-border bg-card p-4 transition card-shadow ${active ? "hover:border-primary/60" : "cursor-not-allowed opacity-70"}`}
     >
       <div className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-3">{p.name}</div>
       <div className="flex items-center gap-3">
