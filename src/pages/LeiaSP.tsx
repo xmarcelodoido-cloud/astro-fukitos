@@ -91,6 +91,16 @@ const LeiaSP = () => {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold truncate">{b.title}</div>
                     {b.sub && <div className="text-xs text-muted-foreground truncate">{b.sub}</div>}
+                    {typeof b.progress === "number" && (
+                      <div className="mt-2">
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-gradient-brand" style={{ width: `${Math.min(100, b.progress)}%` }} />
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-1">
+                          {b.progress}% lido{b.pages ? ` · ${b.pages} páginas` : ""}{b.quiz ? (b.quizDone ? " · quiz feito" : " · tem quiz") : ""}
+                        </div>
+                      </div>
+                    )}
                     <div className="mt-2">
                       {st === "run" ? (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />

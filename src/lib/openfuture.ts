@@ -201,9 +201,30 @@ export interface LeiaBook {
   sub?: string;
   img?: string;
   quiz?: boolean;
+  progress?: number;
+  pages?: number;
+  quizDone?: boolean;
+  done?: boolean;
 }
 
-export const listLeia = () => call<{ items: LeiaBook[] }>("/api/platform/leia/list");
+// Normaliza os dois formatos conhecidos (OpenFuture `items` e formato `livros`).
+const normalizeBook = (b: any): LeiaBook => ({
+  id: String(b.id),
+  title: b.title ?? b.titulo ?? "Livro",
+  sub: b.sub ?? b.autor,
+  img: b.img ?? b.capa,
+  quiz: b.quiz ?? b.temQuiz,
+  progress: typeof b.progresso === "number" ? b.progresso : b.progress,
+  pages: b.totalPaginas ?? b.pages,
+  quizDone: b.quizFeito ?? b.quizDone,
+  done: b.feito ?? b.done,
+});
+
+export const listLeia = async () => {
+  const res = await call<any>("/api/platform/leia/list");
+  const raw = res?.items ?? res?.livros ?? [];
+  return { items: (raw as any[]).map(normalizeBook) };
+};
 
 export const runLeia = (book: LeiaBook) =>
   call<any>("/api/platform/leia/run", "POST", { id: book.id });

@@ -21,6 +21,13 @@ const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [batch, setBatch] = useState<{
+    status: "QUEUED" | "RUNNING" | "COMPLETED";
+    total: number;
+    completed: number;
+    failed: number;
+    current: string;
+  } | null>(null);
 
   const { banInfo, checkBan, clearBanInfo } = useBanCheck();
   const { warningInfo, checkWarning, acknowledgeWarning, clearWarningInfo } = useWarningCheck();
@@ -68,6 +75,7 @@ const Index = () => {
   const handleStartTasks = async (selected: Task[], isDraft: boolean, minTime: number, maxTime: number) => {
     setIsModalOpen(false);
     if (!session || selected.length === 0) return;
+    setBatch({ status: "QUEUED", total: selected.length, completed: 0, failed: 0, current: "" });
     addNotification(`${selected.length} ATIVIDADES ENVIADAS`, "info");
     const result = await processTasks(
       selected,
@@ -77,11 +85,19 @@ const Index = () => {
       async (message, type) => {
         addNotification(message, type);
         const title = message.includes("'") ? message.split("'")[1] : "";
+        setBatch((b) => b && ({
+          ...b,
+          status: "RUNNING",
+          current: type === "info" && title ? title : b.current,
+          completed: b.completed + (type === "success" ? 1 : 0),
+          failed: b.failed + (type === "error" ? 1 : 0),
+        }));
         if (type === "success") await logger.logTaskCompleted(session.ra, session.nick, "", title);
         else if (type === "error") await logger.logTaskFailed(session.ra, session.nick, "", title, message);
       },
       session.ra,
     );
+    setBatch((b) => b && ({ ...b, status: "COMPLETED", current: "", completed: result.success, failed: result.error }));
     if (result.success > 0) addNotification(`${result.success} SUCESSO`, "success");
     if (result.error > 0) addNotification(`${result.error} FALHARAM`, "error");
   };
@@ -196,6 +212,34 @@ const Index = () => {
             Buscar Atividades Expiradas
           </Button>
         </div>
+
+        {batch && (
+          <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold font-bricolage">Progresso</h2>
+              <span className="text-xs font-semibold px-2 py-1 rounded-md bg-primary/15 text-primary">
+                {batch.status === "QUEUED" ? "Na fila" : batch.status === "RUNNING" ? "Executando" : "Concluído"}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
+              <div
+                className="h-full bg-gradient-brand transition-all"
+                style={{ width: `${Math.round(((batch.completed + batch.failed) / Math.max(1, batch.total)) * 100)}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div><div className="text-xl font-bold text-gradient">{batch.completed}</div><div className="text-xs text-muted-foreground">Feitas</div></div>
+              <div><div className="text-xl font-bold text-destructive">{batch.failed}</div><div className="text-xs text-muted-foreground">Falharam</div></div>
+              <div><div className="text-xl font-bold">{batch.total}</div><div className="text-xs text-muted-foreground">Total</div></div>
+            </div>
+            {batch.current && (
+              <p className="mt-3 text-xs text-muted-foreground truncate">Agora: {batch.current}</p>
+            )}
+            {batch.status === "COMPLETED" && (
+              <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => setBatch(null)}>Fechar</Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

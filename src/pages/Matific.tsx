@@ -147,11 +147,20 @@ const Matific = () => {
                   key={ep.slug + ep.assignmentId}
                   className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background/50"
                 >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{ep.slug}</div>
-                    {ep.dueDate && (
-                      <div className="text-xs text-muted-foreground">Entrega: {ep.dueDate}</div>
-                    )}
+                  <div className="min-w-0 flex items-center gap-3">
+                    <img
+                      src={`https://static1.matific.com/v1/346x242/${ep.slug}.png`}
+                      alt=""
+                      loading="lazy"
+                      onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                      className="w-16 h-11 object-cover rounded-md shrink-0 bg-muted"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{prettySlug(ep.slug)}</div>
+                      {ep.dueDate && (
+                        <div className="text-xs text-muted-foreground">Entrega: {ep.dueDate}</div>
+                      )}
+                    </div>
                   </div>
                   {done[ep.slug] ? (
                     <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
@@ -169,6 +178,13 @@ const Matific = () => {
     </PlatformShell>
   );
 };
+
+const prettySlug = (slug: string) =>
+  slug
+    .replace(/^Worksheet/, "")
+    .replace(/Main$/, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim() || slug;
 
 const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | number }) => (
   <div className="rounded-2xl border border-border bg-card p-4">
