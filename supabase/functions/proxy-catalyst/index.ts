@@ -173,7 +173,11 @@ serve(async (req) => {
         );
         if (!res.ok) {
           const err = await res.text();
-          throw new Error(`Rooms failed: ${res.status} - ${err}`);
+          console.log(`[rooms] status=${res.status} body=${err.slice(0, 200)}`);
+          result = { success: false, error: res.status === 401 || res.status === 403
+            ? "Sessão expirada. Saia e entre novamente."
+            : "Não foi possível carregar suas salas" };
+          break;
         }
         result = await res.json();
         break;
@@ -220,7 +224,11 @@ serve(async (req) => {
 
         if (!res.ok) {
           const err = await res.text();
-          throw new Error(`Tasks failed: ${res.status} - ${err}`);
+          console.log(`[tasks] status=${res.status} body=${err.slice(0, 200)}`);
+          result = { success: false, error: res.status === 401 || res.status === 403
+            ? "Sessão expirada. Saia e entre novamente."
+            : "Não foi possível buscar as tarefas" };
+          break;
         }
         result = await res.json();
         break;
@@ -295,8 +303,13 @@ serve(async (req) => {
           ...(userNick ? { executed_by: userNick } : {}),
         };
 
-        const submitRes = await fetch(`${ECLIPSE_API}/tms/task/${taskId}/answer`, {
-          method: "POST",
+        // Rascunho existente: atualiza a resposta em vez de criar outra
+        const existingAnswerId = taskData.answer_id || taskData.answer?.id;
+        const submitRes = await fetch(
+          existingAnswerId
+            ? `${ECLIPSE_API}/tms/task/${taskId}/answer/${existingAnswerId}`
+            : `${ECLIPSE_API}/tms/task/${taskId}/answer`, {
+          method: existingAnswerId ? "PUT" : "POST",
           headers: eduspHeaders(token),
           body: JSON.stringify(answerBody),
         });
@@ -337,8 +350,8 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error(`[proxy-catalyst] Error: ${error.message}`);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: false, error: error.message || "Erro interno" }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

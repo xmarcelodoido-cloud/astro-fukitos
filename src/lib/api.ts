@@ -30,12 +30,12 @@ async function proxyRequest<T = any>(payload: any): Promise<T> {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Proxy error: ${errorText}`);
+  const text = await res.text();
+  let data: any;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (!res.ok || data === null) {
+    throw new Error(data?.error || "Falha de comunicação com o servidor");
   }
-
-  const data = await res.json();
   if (data.success === false && data.error) {
     throw new Error(data.error);
   }

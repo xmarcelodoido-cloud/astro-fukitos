@@ -31,6 +31,15 @@ import { toast } from "sonner";
 import { useAntiInspect } from "@/hooks/useAntiInspect";
 import { IntroFlow } from "@/components/IntroFlow";
 
+async function readFnError(error: any): Promise<string> {
+  try {
+    const body = await error?.context?.json?.();
+    if (body?.error) return String(body.error);
+  } catch { /* corpo não-JSON */ }
+  return error?.message || "Erro de comunicação com a IA";
+}
+
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
@@ -170,7 +179,7 @@ const SessaoIA = () => {
         body: { sessionId, message, requestHintLevel },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await readFnError(error));
       if (data?.error) throw new Error(data.error);
 
       const aiMsg: Message = {
@@ -222,7 +231,7 @@ const SessaoIA = () => {
       const { data, error } = await supabase.functions.invoke("ai-quiz", {
         body: { sessionId, action: "generate" },
       });
-      if (error) throw error;
+      if (error) throw new Error(await readFnError(error));
       if (data?.error) throw new Error(data.error);
       setQuizQuestions(data.questions);
       setQuizAnswers([-1, -1, -1]);
@@ -246,7 +255,7 @@ const SessaoIA = () => {
       const { data, error } = await supabase.functions.invoke("ai-quiz", {
         body: { sessionId, action: "validate", answers: quizAnswers },
       });
-      if (error) throw error;
+      if (error) throw new Error(await readFnError(error));
       if (data?.error) throw new Error(data.error);
       setQuizResults(data.results);
       setAttemptsLeft(data.attempts_left);
