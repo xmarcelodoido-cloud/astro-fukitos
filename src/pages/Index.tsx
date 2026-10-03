@@ -212,6 +212,34 @@ const Index = () => {
             Buscar Atividades Expiradas
           </Button>
         </div>
+
+        {batch && (
+          <div className="mt-6 rounded-2xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold font-bricolage">Progresso</h2>
+              <span className="text-xs font-semibold px-2 py-1 rounded-md bg-primary/15 text-primary">
+                {batch.status === "QUEUED" ? "Na fila" : batch.status === "RUNNING" ? "Executando" : "Concluído"}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
+              <div
+                className="h-full bg-gradient-brand transition-all"
+                style={{ width: `${Math.round(((batch.completed + batch.failed) / Math.max(1, batch.total)) * 100)}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div><div className="text-xl font-bold text-gradient">{batch.completed}</div><div className="text-xs text-muted-foreground">Feitas</div></div>
+              <div><div className="text-xl font-bold text-destructive">{batch.failed}</div><div className="text-xs text-muted-foreground">Falharam</div></div>
+              <div><div className="text-xl font-bold">{batch.total}</div><div className="text-xs text-muted-foreground">Total</div></div>
+            </div>
+            {batch.current && (
+              <p className="mt-3 text-xs text-muted-foreground truncate">Agora: {batch.current}</p>
+            )}
+            {batch.status === "COMPLETED" && (
+              <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => setBatch(null)}>Fechar</Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
