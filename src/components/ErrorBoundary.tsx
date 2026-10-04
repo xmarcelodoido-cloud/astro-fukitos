@@ -10,7 +10,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error) {
-    console.error("Astrokitos crash:", error);
+    console.error("Astro G crash:", error);
   }
 
   render() {

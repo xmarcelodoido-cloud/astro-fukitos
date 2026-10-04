@@ -137,7 +137,7 @@ const Login = () => {
             <div className="w-12 h-12 rounded-xl bg-gradient-brand flex items-center justify-center glow-primary">
               <Sparkles className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-3xl font-bold font-bricolage text-gradient">Astrokitos</span>
+            <span className="text-3xl font-bold font-bricolage text-gradient">Astro G</span>
           </div>
           <p className="text-muted-foreground text-sm">Entre com sua conta da Sala do Futuro</p>
         </div>
@@ -221,7 +221,7 @@ const Login = () => {
               className="w-full bg-gradient-brand hover:opacity-90 text-primary-foreground font-semibold py-6 glow-primary"
             >
               <LogIn className="w-4 h-4 mr-2" />
-              {loading ? "Entrando..." : "Entrar no Astrokitos"}
+              {loading ? "Entrando..." : "Entrar no Astro G"}
             </Button>
           </div>
 

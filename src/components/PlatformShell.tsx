@@ -14,7 +14,7 @@ interface PlatformShellProps {
 }
 
 /**
- * Shell padronizado para páginas de plataforma no tema Astrokitos.
+ * Shell padronizado para páginas de plataforma no tema Astro G.
  * Header com logo, botão voltar, hero com nome + tagline e slot para conteúdo.
  */
 export const PlatformShell = ({
@@ -111,7 +111,7 @@ const ComingSoonBody = ({ platformName }: { platformName: string }) => (
       <p className="text-sm text-muted-foreground leading-relaxed">
         O <strong className="text-foreground">{platformName}</strong> está sendo
         desenvolvido. A integração automática chegará em breve e todo o fluxo já
-        vai estar no visual do Astrokitos.
+        vai estar no visual do Astro G.
       </p>
     </div>
 

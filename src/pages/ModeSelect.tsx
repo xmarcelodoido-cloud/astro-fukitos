@@ -120,7 +120,7 @@ const ModeSelect = () => {
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <div className="font-bold font-bricolage text-gradient text-lg leading-none">Astrokitos</div>
+            <div className="font-bold font-bricolage text-gradient text-lg leading-none">Astro G</div>
             <div className="text-[10px] text-primary flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 rounded-full bg-primary" /> online</div>
           </div>
         </div>
@@ -164,7 +164,7 @@ const ModeSelect = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-6">
           {/* Mobile header */}
           <div className="md:hidden flex items-center justify-between">
-            <span className="font-bold font-bricolage text-gradient text-xl">Astrokitos</span>
+            <span className="font-bold font-bricolage text-gradient text-xl">Astro G</span>
             <button onClick={doLogout} className="text-destructive"><LogOut className="w-5 h-5" /></button>
           </div>
 
@@ -188,7 +188,7 @@ const ModeSelect = () => {
             <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="rounded-3xl border border-primary/30 bg-card p-6">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold mb-2"><Heart className="w-4 h-4" /> Apoie o projeto</div>
-              <h3 className="font-bold font-bricolage text-lg text-foreground">Ajude a manter o Astrokitos no ar</h3>
+              <h3 className="font-bold font-bricolage text-lg text-foreground">Ajude a manter o Astro G no ar</h3>
               <p className="text-xs text-muted-foreground mt-1">Tudo é de graça — sua doação paga os servidores e a IA criada pelo Zenos.</p>
               <div className="grid grid-cols-3 gap-2 mt-4">
                 {[5, 10, 25].map((v) => (
@@ -244,7 +244,7 @@ const ModeSelect = () => {
             </div>
           </section>
 
-          <p className="text-center text-xs text-muted-foreground pt-4">Astrokitos · feito por <span className="text-primary">Zenos</span></p>
+          <p className="text-center text-xs text-muted-foreground pt-4">Astro G · feito por <span className="text-primary">Zenos</span></p>
         </div>
       </main>
 

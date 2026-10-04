@@ -117,7 +117,7 @@ const ActiveShield = ({ children }: { children: ReactNode }) => {
           <h1 className="text-3xl font-bold text-red-500">🚫 Acesso permanentemente bloqueado</h1>
           <p className="text-white/80">
             Detectamos uso excessivo de ferramentas de inspeção neste dispositivo.
-            O acesso ao Astrokitos foi bloqueado de forma permanente.
+            O acesso ao Astro G foi bloqueado de forma permanente.
           </p>
           <p className="text-sm text-white/50">
             Se você acredita que isso é um engano, entre em contato com o administrador.
@@ -133,7 +133,7 @@ const ActiveShield = ({ children }: { children: ReactNode }) => {
         <div className="max-w-md space-y-4">
           <h1 className="text-3xl font-bold text-[#fba12c]">⚠️ Sistema Galáctico</h1>
           <p className="text-white/80">
-            Ferramentas de desenvolvedor detectadas. Feche o DevTools para continuar usando o Astrokitos.
+            Ferramentas de desenvolvedor detectadas. Feche o DevTools para continuar usando o Astro G.
           </p>
           <p className="text-sm text-white/50">
             Tentativas restantes antes do banimento permanente: aproximadamente {Math.max(0, MAX_ATTEMPTS - (parseInt(localStorage.getItem(ATTEMPTS_KEY) || "0", 10) || 0))}.
