@@ -11,17 +11,23 @@ export const useMaintenanceSetting = () => {
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
-    const { data } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "maintenance")
-      .maybeSingle();
-    const v = (data?.value as unknown as MaintenanceState | undefined) ?? {
-      active: false,
-      expected_return: "Prazo indeterminado",
-    };
-    setState(v);
-    setLoading(false);
+    const fallback: MaintenanceState = { active: false, expected_return: "Prazo indeterminado" };
+    try {
+      const query = supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "maintenance")
+        .maybeSingle();
+      const timeout = new Promise<{ data: null }>((resolve) =>
+        setTimeout(() => resolve({ data: null }), 4000),
+      );
+      const { data } = (await Promise.race([query, timeout])) as { data: { value: unknown } | null };
+      setState((data?.value as MaintenanceState | undefined) ?? fallback);
+    } catch {
+      setState(fallback);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
