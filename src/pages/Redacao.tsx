@@ -37,12 +37,17 @@ const Redacao = () => {
     setLog([]);
     setProgress(0);
     try {
-      const res = await runRedacao(task, 90000, 120000);
-      const jobId = res.data.job_id;
+      const res: any = await runRedacao(task, 90000, 120000);
+      const jobId = res?.data?.job_id ?? res?.job_id ?? res?.jobId;
+      if (!jobId) {
+        toast.success("Redação enviada para processamento");
+        return;
+      }
       for (let i = 0; i < 180; i++) {
         if (stop.current) return;
         await new Promise((r) => setTimeout(r, 2000));
-        const st = (await jobStatus(jobId)).data;
+        const sr: any = await jobStatus(jobId, "redacao");
+        const st = sr?.data ?? sr ?? {};
         setProgress(st.progress ?? 0);
         setLog(st.log ?? []);
         if (st.status === "done") {

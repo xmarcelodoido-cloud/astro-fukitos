@@ -177,8 +177,8 @@ export interface JobStatus {
   error?: string;
 }
 
-export const jobStatus = (jobId: string) =>
-  call<{ data: JobStatus }>("/api/platform/tarefas/jobstatus", "POST", { jobId });
+export const jobStatus = (jobId: string, platform: "tarefas" | "redacao" = "tarefas") =>
+  call<{ data: JobStatus }>(`/api/platform/${platform}/jobstatus`, "POST", { jobId });
 
 // ==================== REDAÇÃO ====================
 
@@ -227,7 +227,11 @@ export const listLeia = async () => {
 };
 
 export const runLeia = (book: LeiaBook) =>
-  call<any>("/api/platform/leia/run", "POST", { id: book.id });
+  call<any>("/api/platform/leia/run", "POST", {
+    bookId: Number(book.id) || book.id,
+    hasQuiz: !!book.quiz && !book.quizDone,
+    simulatedSeconds: Math.max(600, (book.pages ?? 60) * 60),
+  });
 
 // ==================== MATIFIC ====================
 
