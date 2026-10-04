@@ -85,7 +85,7 @@ export const IntroFlow = ({ storageKey, onDone }: IntroFlowProps) => {
               </span>
 
               <h5 className="text-sm font-semibold mb-2 text-left mr-auto text-foreground font-bricolage">
-                Termo de uso do Astrokitos
+                Termo de uso do Astro G
               </h5>
 
               <p className="w-full mb-4 text-xs text-justify text-muted-foreground leading-relaxed">
@@ -237,7 +237,7 @@ const ChipLoader = () => (
       fill="url(#textGradientAk)"
       textAnchor="middle"
     >
-      Astrokitos
+      Astro G
     </text>
 
     {[100, 80, 60, 100].map((cx, i) => (

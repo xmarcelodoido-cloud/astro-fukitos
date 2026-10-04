@@ -62,7 +62,7 @@ export function EntryDonationModal() {
             </div>
 
             <h3 className="text-2xl font-bold text-center mb-2 font-bricolage">
-              <span className="text-gradient">Ajude o Astrokitos!</span>
+              <span className="text-gradient">Ajude o Astro G!</span>
             </h3>
 
             <p className="text-sm text-foreground/90 text-center mb-3 leading-relaxed">

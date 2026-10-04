@@ -125,7 +125,7 @@ const SessaoIA = () => {
             {
               id: "welcome",
               role: "system",
-              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astrokitos.\n\n**Atividade:** ${s.task_title}\n\n⏱️ Você precisa estudar por pelo menos **${s.required_minutes} minutos** antes de poder enviar a tarefa, e antes do envio responderá um **quiz com 3 perguntas** sobre o conteúdo (3 tentativas).\n\nVou te mostrar agora as questões da Sala do Futuro exatamente como elas estão...`,
+              content: `👋 **Bem-vindo!** Eu sou a tutora de IA do Astro G.\n\n**Atividade:** ${s.task_title}\n\n⏱️ Você precisa estudar por pelo menos **${s.required_minutes} minutos** antes de poder enviar a tarefa, e antes do envio responderá um **quiz com 3 perguntas** sobre o conteúdo (3 tentativas).\n\nVou te mostrar agora as questões da Sala do Futuro exatamente como elas estão...`,
             },
           ]);
           // Dispara mensagem inicial pra IA listar as questões originais
