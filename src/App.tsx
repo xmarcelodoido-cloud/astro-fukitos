@@ -10,6 +10,7 @@ import { EntryDonationModal } from "@/components/EntryDonationModal";
 import { useMaintenanceSetting } from "@/hooks/useMaintenanceSetting";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { RequireAuth } from "@/components/RequireAuth";
+import { AppLoader } from "@/components/AppLoader";
 
 const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -45,14 +46,14 @@ const AppShell = () => {
 
   const isAdminRoute = location.pathname.startsWith("/admin");
 
-  if (loading) return null;
+  if (loading) return <AppLoader />;
 
   if (maintenance?.active && !isUnlocked && !isAdminRoute) {
     return <MaintenanceMode onUnlock={() => setIsUnlocked(true)} expectedReturn={maintenance.expected_return} />;
   }
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AppLoader />}>
       <EntryDonationModal />
       <Routes>
         <Route path="/login" element={<Login />} />
