@@ -1,3 +1,5 @@
+import { getSid, listTarefas, runTarefa, jobStatus, OfTask } from "./openfuture";
+
 const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/proxy-catalyst`;
 
 export interface Task {
@@ -98,6 +100,19 @@ export async function fetchUserTasks(
   nick: string,
   filter: string
 ): Promise<Task[]> {
+  // Preferir a Sala do Futuro via OpenFuture quando há sessão ativa
+  if (getSid()) {
+    try {
+      const res = await listTarefas(filter === "expired" ? "expirado" : "afazer");
+      const items = (res?.items || []).filter((t) => !t.is_exam && !t.is_essay);
+      return items.map((t: OfTask) => ({
+        id: t.id, title: t.title, token, room: t.turma || t.pub, roomCode: t.pub,
+        type: filter, publication_target: t.pub, score: 100, _rawData: { __of: t },
+      }));
+    } catch (e) {
+      console.warn("OpenFuture tarefas falhou, usando fallback", e);
+    }
+  }
   // Use stored targets or fetch rooms again
   let targets = sessionData?.targets || [];
   if (!targets.length) {
@@ -167,6 +182,26 @@ export async function processTasks(
   for (const task of tasks) {
     try {
       onProgress(`Enviando: ${task.title.slice(0, 30)}...`, "info");
+
+      const ofTask: OfTask | undefined = task._rawData?.__of;
+      if (ofTask) {
+        const r: any = await runTarefa(ofTask, minTime * 60000, maxTime * 60000);
+        const jobId = r?.data?.job_id ?? r?.job_id;
+        let ok = !jobId;
+        for (let i = 0; jobId && i < 400; i++) {
+          await new Promise((res) => setTimeout(res, 3000));
+          const sr: any = await jobStatus(jobId, "tarefas");
+          const st = sr?.data ?? sr ?? {};
+          if (st.status === "done") { ok = true; break; }
+          if (st.status === "error") throw new Error(st.error || "falha no processamento");
+        }
+        if (ok) {
+          if (ra) await saveToDatabase(ra, task, true, 100, minTime * 60);
+          success++;
+          onProgress(`✅ ${task.title.slice(0, 25)} concluído`, "success");
+        } else { fail++; onProgress(`❌ ${task.title.slice(0, 25)} demorou demais`, "error"); }
+        continue;
+      }
 
       const payload = {
         action: "complete",
