@@ -63,9 +63,11 @@ const Index = () => {
       } else {
         addNotification("NENHUMA ATIVIDADE ENCONTRADA", "info");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      addNotification("ERRO AO BUSCAR ATIVIDADES", "error");
+      const msg = e?.message || "Erro ao buscar atividades";
+      addNotification(msg.toUpperCase(), "error");
+      if (/sess[aã]o expirada|n[aã]o autenticado/i.test(msg)) { logout(); navigate("/login"); return; }
       await logger.logError(session.ra, session.nick, "Erro ao buscar atividades");
     } finally {
       setIsLoading(false);
