@@ -76,17 +76,16 @@ const Login = () => {
 
       const data = await login(fullRa, password);
 
-      // Conecta também ao backend das demais plataformas (melhor esforço)
-      let ofConnected = false;
-      let identity: { name: string; nick: string; avatar_url?: string } | null = null;
+      // Sessão da Sala do Futuro (obrigatória para tarefas e redação)
       try {
         await ofLogin(ra.trim(), digito.trim(), uf, password);
-        ofConnected = true;
-        // Busca a identidade real do aluno (nome, nick, avatar)
-        identity = await getIdentity();
-      } catch (e) {
-        console.warn("Plataformas extras indisponíveis", e);
+      } catch (e: any) {
+        toast.error(`Não foi possível conectar à Sala do Futuro: ${e?.message || "tente de novo"}`);
+        setLoading(false);
+        return;
       }
+      const ofConnected = true;
+      const identity = await getIdentity();
 
       const sess = {
         ra: fullRa,
