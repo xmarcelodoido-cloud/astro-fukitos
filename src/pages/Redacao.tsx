@@ -15,10 +15,11 @@ const Redacao = () => {
   const [progress, setProgress] = useState(0);
   const stop = useRef(false);
 
-  const load = async () => {
+  const [status, setStatus] = useState<"afazer" | "expirado">("afazer");
+  const load = async (st = status) => {
     setLoading(true);
     try {
-      const res = await listRedacoes("afazer");
+      const res = await listRedacoes(st);
       setItems(res.items || []);
     } catch (e: any) {
       toast.error(e.message || "Não foi possível carregar as redações");
@@ -84,7 +85,11 @@ const Redacao = () => {
                 {loading ? "Carregando..." : `${items.length} redação(ões)`}
               </p>
             </div>
-            <Button variant="outline" onClick={load} disabled={loading || busy}>Atualizar</Button>
+            <div className="flex gap-2">
+              <Button variant={status === "afazer" ? "default" : "outline"} size="sm" disabled={loading || busy} onClick={() => { setStatus("afazer"); load("afazer"); }}>Pendentes</Button>
+              <Button variant={status === "expirado" ? "default" : "outline"} size="sm" disabled={loading || busy} onClick={() => { setStatus("expirado"); load("expirado"); }}>Expiradas</Button>
+              <Button variant="outline" size="sm" onClick={() => load()} disabled={loading || busy}>Atualizar</Button>
+            </div>
           </div>
 
           {loading ? (
