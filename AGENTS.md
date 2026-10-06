@@ -1,0 +1,1 @@
+- Leia SP talks directly to the official Elefante Letrado student API via proxy-leiasp (read-only allowlist); the SSO link token lives only in sessionStorage. Why: OpenFuture is blocked by Turnstile.
