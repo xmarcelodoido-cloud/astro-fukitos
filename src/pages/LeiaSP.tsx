@@ -46,8 +46,8 @@ const LeiaSP = () => {
   const disconnect = () => { setLeiaToken(null); setConnected(false); setThermo(null); setAssigned([]); setCatalog([]); };
 
   const list = (tab === "assigned" ? assigned : catalog).filter((b) => b.title.toLowerCase().includes(search.toLowerCase()));
-  const tGoal = thermo?.goal ?? thermo?.weeklyGoal ?? thermo?.data?.goal;
-  const tDone = thermo?.minutes ?? thermo?.readMinutes ?? thermo?.current ?? thermo?.data?.minutes;
+  const tGoal = thermo?.studentGoal?.DesiredReadingTime ?? thermo?.goal ?? thermo?.weeklyGoal ?? thermo?.data?.goal;
+  const tDone = thermo?.readSum ?? thermo?.minutes ?? thermo?.readMinutes ?? thermo?.current ?? thermo?.data?.minutes;
 
   return (
     <PlatformShell name="LeiaSP" tagline="Sua biblioteca oficial do Leia SP dentro do Astro G." icon={BookOpen} status="available">
