@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.proxy-efekta]
 verify_jwt = false
+
+[functions.proxy-leiasp]
+verify_jwt = false
