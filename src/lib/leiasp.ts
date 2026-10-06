@@ -3,13 +3,20 @@ const KEY = "astrokitos_leia_token";
 
 export interface LeiaToken { access_token: string; expires_at?: string }
 
+const b64 = (s: string) => {
+  let t = s.replace(/\s/g, "+").replace(/-/g, "+").replace(/_/g, "/");
+  while (t.length % 4) t += "=";
+  return atob(t);
+};
+
 export function parseLeiaLink(input: string): LeiaToken | null {
   const s = input.trim();
   let t = s;
-  try { const u = new URL(s); t = u.searchParams.get("t") || ""; } catch { /* raw */ }
+  const m = s.match(/[?&]t=([^&#\s]+)/);
+  if (m) { try { t = decodeURIComponent(m[1]); } catch { t = m[1]; } }
   try {
-    const obj = JSON.parse(atob(decodeURIComponent(t)));
-    if (obj?.access_token) return { access_token: obj.access_token, expires_at: obj.expires_at };
+    const obj = JSON.parse(b64(t));
+    if (obj?.access_token) return { access_token: String(obj.access_token), expires_at: obj.expires_at };
   } catch { /* not b64 */ }
   if (/^[A-Za-z0-9]{20,200}$/.test(t)) return { access_token: t };
   return null;
@@ -42,20 +49,22 @@ export async function leiaGet<T = any>(path: string): Promise<T> {
 export interface LeiaItem { id: string; title: string; img?: string; sub?: string; progress?: number }
 
 const pickArr = (d: any): any[] =>
-  Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : Array.isArray(d?.items) ? d.items
-  : Array.isArray(d?.books) ? d.books : Array.isArray(d?.results) ? d.results
+  Array.isArray(d) ? d : Array.isArray(d?.Books) ? d.Books : Array.isArray(d?.data) ? d.data
+  : Array.isArray(d?.items) ? d.items : Array.isArray(d?.books) ? d.books : Array.isArray(d?.results) ? d.results
   : d && typeof d === "object" ? Object.values(d).flatMap((v) => (Array.isArray(v) ? v : [])) : [];
 
 export function normalizeBooks(d: any): LeiaItem[] {
   return pickArr(d).map((x: any) => {
-    const b = x?.book ?? x;
-    const p = x?.progress ?? x?.percentage ?? b?.progress;
+    const b = x?.book ?? x?.Book ?? x;
+    const p = x?.ReadingPercent ?? b?.ReadingPercent ?? x?.progress ?? x?.percentage ?? b?.progress;
+    const a = b?.Authors ?? b?.authors;
+    const author = Array.isArray(a) ? (typeof a[0] === "string" ? a.join(", ") : a[0]?.name ?? a[0]?.Name) : b?.author ?? b?.Author;
     return {
-      id: String(b?.id ?? b?.bookId ?? x?.id ?? Math.random()),
-      title: String(b?.title ?? b?.name ?? "Livro"),
-      img: b?.cover ?? b?.coverUrl ?? b?.image ?? b?.thumbnail ?? b?.cover_url,
-      sub: b?.author ?? b?.authors?.[0]?.name ?? b?.publisher,
-      progress: typeof p === "number" ? Math.round(p <= 1 ? p * 100 : p) : undefined,
+      id: String(b?.Id ?? b?.id ?? b?.bookId ?? x?.id ?? Math.random()),
+      title: String(b?.Title ?? b?.title ?? b?.name ?? "Livro"),
+      img: b?.CoverPageUrl ?? b?.cover ?? b?.coverUrl ?? b?.image ?? b?.thumbnail ?? b?.cover_url,
+      sub: author ?? b?.Publisher ?? b?.publisher,
+      progress: typeof p === "number" ? Math.round(p <= 1 && p > 0 ? p * 100 : p) : undefined,
     };
   }).filter((b) => b.title);
 }
