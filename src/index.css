@@ -7,82 +7,84 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 79%;
-
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 79%;
-
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 79%;
-
-    --primary: 33 96% 58%;
+    --background: 352 64% 94%;
+    --foreground: 0 0% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 14%;
+    --primary: 358 85% 69%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 17%;
-    --secondary-foreground: 0 0% 79%;
-
-    --muted: 0 0% 17%;
-    --muted-foreground: 0 0% 60%;
-
-    --accent: 18 82% 50%;
+    --secondary: 352 40% 97%;
+    --secondary-foreground: 0 0% 14%;
+    --muted: 352 40% 96%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 358 85% 63%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
+    --border: 352 30% 92%;
+    --input: 352 30% 90%;
+    --ring: 358 85% 69%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 14%;
+    --sidebar-primary: 358 85% 69%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 352 64% 96%;
+    --sidebar-accent-foreground: 0 0% 14%;
+    --sidebar-border: 352 30% 92%;
+    --sidebar-ring: 358 85% 69%;
 
-    --border: 0 0% 100% / 0.15;
-    --input: 0 0% 100% / 0.15;
-    --ring: 33 96% 58%;
 
-    --radius: 0.75rem;
+
+
+
+
+
+
+
+
+    --radius: 1.25rem;
 
     /* Custom gradients */
-    --gradient-brand: linear-gradient(90deg, #fba12c, #e96e14);
-    --gradient-brand-reverse: linear-gradient(90deg, #e96e14, #fba12c);
+    --gradient-brand: linear-gradient(90deg, hsl(358 85% 69%), hsl(352 80% 60%));
+    --gradient-brand-reverse: linear-gradient(90deg, hsl(352 80% 60%), hsl(358 85% 69%));
     
     /* Shadows */
-    --shadow-glow: 0 0 30px hsl(33 96% 58% / 0.3);
-    --shadow-card: 0 4px 25px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 10px 30px -10px hsl(358 85% 69% / 0.45);
+    --shadow-card: 0 8px 30px -12px hsl(352 40% 40% / 0.18);
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 79%;
-    --sidebar-primary: 33 96% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 79%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 33 96% 58%;
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 79%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 79%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 79%;
-    --primary: 33 96% 58%;
+    --background: 352 64% 94%;
+    --foreground: 0 0% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 14%;
+    --primary: 358 85% 69%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 17%;
-    --secondary-foreground: 0 0% 79%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 18 82% 50%;
+    --secondary: 352 40% 97%;
+    --secondary-foreground: 0 0% 14%;
+    --muted: 352 40% 96%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 358 85% 63%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 100% / 0.15;
-    --input: 0 0% 100% / 0.15;
-    --ring: 33 96% 58%;
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 79%;
-    --sidebar-primary: 33 96% 58%;
+    --border: 352 30% 92%;
+    --input: 352 30% 90%;
+    --ring: 358 85% 69%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 14%;
+    --sidebar-primary: 358 85% 69%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 79%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 33 96% 58%;
+    --sidebar-accent: 352 64% 96%;
+    --sidebar-accent-foreground: 0 0% 14%;
+    --sidebar-border: 352 30% 92%;
+    --sidebar-ring: 358 85% 69%;
+
   }
 }
 
@@ -93,9 +95,7 @@
 
   body {
     @apply bg-background text-foreground font-poppins antialiased;
-    background-image: 
-      radial-gradient(ellipse at top, hsla(15, 80%, 60%, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom, hsla(33, 96%, 58%, 0.06) 0%, transparent 50%);
+    background-image: radial-gradient(ellipse at top left, hsl(0 0% 100% / 0.7) 0%, transparent 55%);
     background-attachment: fixed;
   }
 }
@@ -180,4 +180,31 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--foreground));
+}
+
+/* iOS Liquid Glass — all buttons */
+@layer components {
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), .liquid-glass {
+    position: relative;
+    isolation: isolate;
+    border-radius: 9999px;
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.75),
+      inset 0 -1px 0 hsl(0 0% 100% / 0.15),
+      0 1px 2px hsl(352 40% 30% / 0.08),
+      0 8px 24px -10px hsl(352 40% 30% / 0.25);
+    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, filter .2s ease;
+  }
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"])::before, .liquid-glass::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.45) 0%, hsl(0 0% 100% / 0.08) 45%, transparent 55%, hsl(0 0% 100% / 0.12) 100%);
+    z-index: -1;
+  }
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]):not(:disabled):hover { filter: brightness(1.04); transform: translateY(-1px); }
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]):not(:disabled):active { transform: scale(.97); }
 }
