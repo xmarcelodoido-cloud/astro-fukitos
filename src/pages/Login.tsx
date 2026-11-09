@@ -77,15 +77,14 @@ const Login = () => {
       const data = await login(fullRa, password);
 
       // Sessão da Sala do Futuro (obrigatória para tarefas e redação)
+      let ofConnected = false;
       try {
         await ofLogin(ra.trim(), digito.trim(), uf, password);
-      } catch (e: any) {
-        toast.error(`Não foi possível conectar à Sala do Futuro: ${e?.message || "tente de novo"}`);
-        setLoading(false);
-        return;
+        ofConnected = true;
+      } catch (e) {
+        console.warn("OpenFuture indisponível, usando conexão oficial", e);
       }
-      const ofConnected = true;
-      const identity = await getIdentity();
+      const identity = ofConnected ? await getIdentity().catch(() => null) : null;
 
       const sess = {
         ra: fullRa,

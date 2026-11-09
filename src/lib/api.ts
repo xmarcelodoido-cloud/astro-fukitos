@@ -100,13 +100,15 @@ export async function fetchUserTasks(
   nick: string,
   filter: string
 ): Promise<Task[]> {
-  if (!getSid()) throw new Error("Sessão expirada, entre de novo");
+  if (getSid()) {
   const res = await listTarefas(filter === "expired" ? "expirado" : "afazer");
   const items = (res?.items || []).filter((t) => !t.is_exam && !t.is_essay);
   return items.map((t: OfTask) => ({
     id: t.id, title: t.title, token, room: t.turma || t.pub, roomCode: t.pub,
     type: filter, publication_target: t.pub, score: 100, _rawData: { __of: t },
   }));
+  }
+  if (!token) throw new Error("Sessão expirada, entre de novo");
   // Use stored targets or fetch rooms again
   let targets = sessionData?.targets || [];
   if (!targets.length) {
@@ -178,8 +180,7 @@ export async function processTasks(
       onProgress(`Enviando: ${task.title.slice(0, 30)}...`, "info");
 
       const ofTask: OfTask | undefined = task._rawData?.__of;
-      if (!ofTask) throw new Error("Sessão expirada, entre de novo");
-      {
+      if (ofTask) {
         const r: any = await runTarefa(ofTask, minTime * 60000, maxTime * 60000);
         const jobId = r?.data?.job_id ?? r?.job_id;
         let ok = !jobId;
