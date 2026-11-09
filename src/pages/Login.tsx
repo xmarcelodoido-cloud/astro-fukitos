@@ -97,6 +97,8 @@ const Login = () => {
         uf: uf.toUpperCase(),
         ofConnected,
         identity,
+        sed_token: data.sed_token,
+        codigoAluno: data.codigoAluno,
       };
       const { getSessionData } = await import("@/lib/api");
       const sd = getSessionData();

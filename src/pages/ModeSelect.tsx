@@ -180,6 +180,9 @@ const ModeSelect = () => {
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button onClick={() => navigate("/automatico")} className="px-4 py-2 rounded-xl bg-gradient-brand text-primary-foreground text-sm font-semibold glow-primary">Fazer tarefas</button>
                   <button onClick={() => navigate("/ia")} className="px-4 py-2 rounded-xl border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/10">Estudar com IA</button>
+                  {[["/boletim","Boletim"],["/notas","Notas"],["/faltas","Faltas"],["/agenda","Agenda"]].map(([to,l]) => (
+                    <button key={to} onClick={() => navigate(to)} className="px-4 py-2 rounded-xl bg-foreground text-background text-sm font-semibold">{l}</button>
+                  ))}
                 </div>
               </div>
             </motion.section>

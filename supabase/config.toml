@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.proxy-leiasp]
 verify_jwt = false
+
+[functions.proxy-sed]
+verify_jwt = false

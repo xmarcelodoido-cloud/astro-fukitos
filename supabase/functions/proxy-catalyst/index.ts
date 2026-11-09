@@ -163,6 +163,8 @@ serve(async (req) => {
         }
         result = await tokRes.json();
         if (!result?.nick && sed?.DadosUsuario?.NAME) result.nick = sed.DadosUsuario.NAME;
+        result.sed_token = sed.token;
+        result.codigoAluno = String(sed?.DadosUsuario?.CD_USUARIO ?? sed?.DadosUsuario?.CodigoAluno ?? "");
         break;
       }
 
