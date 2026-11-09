@@ -14,6 +14,9 @@ export interface RaSession {
   uf?: string;
   /** Conectado também ao backend das plataformas (Matific, LeiaSP, etc.) */
   ofConnected?: boolean;
+  /** Token oficial SED e código do aluno (boletim/agenda) */
+  sed_token?: string;
+  codigoAluno?: string;
   /** Identidade real vinda da Sala do Futuro (nome completo, nick, avatar) */
   identity?: { name: string; nick: string; avatar_url?: string } | null;
 }

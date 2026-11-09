@@ -26,6 +26,7 @@ const Khan = lazy(() => import("./pages/Khan"));
 const Speak = lazy(() => import("./pages/Speak"));
 const Perfil = lazy(() => import("./pages/Perfil"));
 const Login = lazy(() => import("./pages/Login"));
+const Escola = lazy(() => import("./pages/Escola"));
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,10 @@ const AppShell = () => {
         <Route path="/khan" element={<RequireAuth><Khan /></RequireAuth>} />
         <Route path="/speak" element={<RequireAuth><Speak /></RequireAuth>} />
         <Route path="/perfil" element={<RequireAuth><Perfil /></RequireAuth>} />
+        <Route path="/boletim" element={<RequireAuth><Escola kind="boletim" /></RequireAuth>} />
+        <Route path="/notas" element={<RequireAuth><Escola kind="notas" /></RequireAuth>} />
+        <Route path="/faltas" element={<RequireAuth><Escola kind="frequencia" /></RequireAuth>} />
+        <Route path="/agenda" element={<RequireAuth><Escola kind="agenda" /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
