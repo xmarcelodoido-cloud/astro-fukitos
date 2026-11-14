@@ -97,22 +97,14 @@ const SessaoIA = () => {
     if (!sessionId) return;
     (async () => {
       try {
-        const { data: s, error } = await supabase
-          .from("ai_sessions")
-          .select("*")
-          .eq("id", sessionId)
-          .single();
-        if (error || !s) throw error || new Error("Sessão não encontrada");
+        const { data: res, error } = await supabase.functions.invoke("ai-session", { body: { action: "get", sessionId } });
+        const s = res?.session;
+        if (error || !s) throw new Error("Sessão não encontrada");
         setSession(s as Session);
         setHintUsed(s.hint_level || 0);
         setQuizPassed(s.quiz_passed || false);
         setAttemptsLeft(Math.max(0, 3 - (s.quiz_attempts || 0)));
-
-        const { data: msgs } = await supabase
-          .from("ai_messages")
-          .select("*")
-          .eq("session_id", sessionId)
-          .order("created_at", { ascending: true });
+        const msgs = res.messages as any[];
 
         const visible = (msgs ?? []).filter(
           (m: any) => !(m.role === "system" && m.content.startsWith("__QUIZ__:"))
@@ -297,15 +289,7 @@ const SessaoIA = () => {
     setFinishing(true);
     try {
       const score = Math.max(40, 100 - hintUsed * 15);
-      await supabase
-        .from("ai_sessions")
-        .update({
-          status: "completed",
-          score,
-          completed_at: new Date().toISOString(),
-          min_time_passed: true,
-        })
-        .eq("id", sessionId);
+      await supabase.functions.invoke("ai-session", { body: { action: "complete", sessionId, score } });
       toast.success(`Sessão concluída! Pontuação: ${score}`);
       setTimeout(() => navigate("/ia"), 1200);
     } catch (err: any) {

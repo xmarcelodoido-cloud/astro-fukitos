@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.proxy-sed]
 verify_jwt = false
+
+[functions.ai-session]
+verify_jwt = false

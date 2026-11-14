@@ -61,21 +61,11 @@ const ModoIA = () => {
       ).slice(0, 14000);
       // Tempo mínimo aleatório entre 5 e 9 minutos
       const requiredMinutes = 5 + Math.floor(Math.random() * 5);
-      const { data, error } = await supabase
-        .from("ai_sessions")
-        .insert({
-          ra,
-          student_name: userNick,
-          task_id: String(task.id),
-          task_title: task.title,
-          task_content: taskContent,
-          required_minutes: requiredMinutes,
-          started_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
+      const { data: res, error } = await supabase.functions.invoke("ai-session", {
+        body: { action: "create", ra, student_name: userNick, task_id: String(task.id), task_title: task.title, task_content: taskContent, required_minutes: requiredMinutes },
+      });
+      if (error || !res?.session) throw new Error(res?.error || "falha ao criar sessão");
+      const data = res.session;
       navigate(`/ia/sessao/${data.id}`);
     } catch (err: any) {
       console.error(err);

@@ -1,2 +1,3 @@
 - Leia SP talks directly to the official Elefante Letrado student API via proxy-leiasp (read-only allowlist); the SSO link token lives only in sessionStorage. Why: OpenFuture is blocked by Turnstile.
 - proxy-sed: read-only proxy for official SED boletim/notas/faltas/agenda using the SED login token kept in sessionStorage. Why: data lives only behind the official student API.
+- AI study sessions/messages are accessed only through the ai-session/ai-tutor edge functions; student-facing tables are admin-only under RLS. Why: students are not authenticated users.

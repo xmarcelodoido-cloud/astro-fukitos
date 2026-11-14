@@ -1,0 +1,14 @@
+DROP POLICY IF EXISTS "Anyone can insert task results" ON public.task_results;
+DROP POLICY IF EXISTS "Anyone can view task results" ON public.task_results;
+CREATE POLICY "Admins can view task results" ON public.task_results FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS "Anyone can update sessions" ON public.ai_sessions;
+DROP POLICY IF EXISTS "Anyone can create sessions" ON public.ai_sessions;
+DROP POLICY IF EXISTS "Anyone can view sessions" ON public.ai_sessions;
+CREATE POLICY "Admins can view sessions" ON public.ai_sessions FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS "Anyone can check warnings" ON public.student_warnings;
+CREATE POLICY "Admins can view warnings" ON public.student_warnings FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS "Anyone can insert logs" ON public.activity_logs;
+DROP POLICY IF EXISTS "Anyone can create messages" ON public.ai_messages;
+DROP POLICY IF EXISTS "Anyone can view messages" ON public.ai_messages;
+CREATE POLICY "Admins can view messages" ON public.ai_messages FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+GRANT ALL ON public.task_results, public.ai_sessions, public.ai_messages, public.activity_logs, public.student_warnings TO service_role;
