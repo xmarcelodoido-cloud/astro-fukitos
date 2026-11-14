@@ -38,13 +38,19 @@ async function call<T = any>(
   method: "GET" | "POST" = "GET",
   body?: unknown,
 ): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25_000);
+  try {
   const res = await fetch(PROXY, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path, method, body, sid: getSid() }),
+    signal: controller.signal,
   });
 
-  const out = (await res.json()) as ProxyResult<T>;
+  const out = (await res.json().catch(() => null)) as ProxyResult<T> | null;
+  if (!out) throw new Error("O OpenFuture retornou uma resposta inválida. Tente novamente em instantes.");
+  if (!res.ok) throw new Error(out.error || `Falha na conexão com o OpenFuture (${res.status})`);
   if (out.sid) setSid(out.sid);
 
   if (!out.ok) {
@@ -53,6 +59,14 @@ async function call<T = any>(
     throw new Error(msg);
   }
   return out.data;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("O OpenFuture demorou para responder. Tente novamente em instantes. Se você iniciou um envio, confira o status antes de reenviar.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ==================== LOGIN ====================

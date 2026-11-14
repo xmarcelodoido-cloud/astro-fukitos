@@ -1,4 +1,5 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { readUpstream, UpstreamTimeoutError } from './upstream.ts'
 
 const BASE = "https://openfuture.lol";
 
@@ -62,14 +63,13 @@ Deno.serve(async (req) => {
     if (sid) headers["Cookie"] = `of_sid=${sid}`;
     if (method === "POST") headers["Content-Type"] = "application/json";
 
-    const upstream = await fetch(`${BASE}${path}`, {
+    const { response: upstream, text: raw } = await readUpstream(`${BASE}${path}`, {
       method,
       headers,
       body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
       redirect: "manual",
     });
 
-    const raw = await upstream.text();
     let data: unknown;
     try {
       data = JSON.parse(raw);
@@ -90,7 +90,11 @@ Deno.serve(async (req) => {
       data,
     }, 200);
   } catch (err) {
-    console.error("proxy-openfuture error", err);
-    return json({ ok: false, error: (err as Error).message ?? "Erro interno" }, 500);
+    if (err instanceof UpstreamTimeoutError) {
+      console.warn("proxy-openfuture: upstream deadline exceeded");
+      return json({ ok: false, status: 504, code: "UPSTREAM_TIMEOUT", error: err.message });
+    }
+    console.error("proxy-openfuture: upstream request failed");
+    return json({ ok: false, status: 502, error: "Não foi possível conectar ao OpenFuture. Tente novamente em instantes." });
   }
 });
